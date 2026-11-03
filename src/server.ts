@@ -1,30 +1,36 @@
 import express from 'express'
+import { Server } from 'http'
 
 export default function initServer() {
   const app = express()
-  let server: any = null
+  let server: Server | null = null
+  let closed = false
 
   function listen(port: number) {
-    server = app.listen(port, 'localhost').on('error', (err: NodeJS.ErrnoException) => {
-      if (err) {
-        if (err.message === 'getaddrinfo ENOTFOUND localhost') {
-          // Fixed: 修复渲染服务在找不到 localhost 时崩溃问题
-          console.log('\x1B[31m%s\x1B[0m', 'Localhost is not found so that the preview server is not working. Please check your hosts file and then restart the application.')
-        } else {
-          console.log(`Preview server port ${port} is busy, trying with port ${port + 1}`)
-          listen(port + 1)
-        }
+    if (closed) return
+    const candidate = app.listen(port, '127.0.0.1')
+    server = candidate
+    candidate.on('error', (error: NodeJS.ErrnoException) => {
+      // Retry only a busy port. Permission, DNS and other failures need a real error.
+      if (error.code === 'EADDRINUSE' && port < 4020 && !closed) {
+        listen(port + 1)
+      } else if (!closed) {
+        console.error('Preview server failed:', error.code || 'unknown error')
       }
-    }).on('listening', () => {
+    })
+    candidate.on('listening', () => {
       app.set('port', port)
       console.log(`Preview server is running on port : ${port}`)
     })
   }
 
   listen(4000)
-
   return {
-    server,
+    get server() { return server },
     app,
+    close() {
+      closed = true
+      if (server) server.close()
+    },
   }
 }

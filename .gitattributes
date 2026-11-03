@@ -1,0 +1,13 @@
+* text=auto
+*.sh text eol=lf
+*.cjs text eol=lf
+*.py text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.ttf binary
+*.eot binary
+# pnpm lockfile patch hashes require exact patch bytes.
+patches/*.patch -text -whitespace

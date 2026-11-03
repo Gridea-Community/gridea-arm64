@@ -1,0 +1,121 @@
+--- a/build.js
++++ b/build.js
+@@ -421,23 +421,22 @@
+         else {
+             let endTagLength = 0;
+             const stackedTag = lastTag.toLowerCase();
+-            const reStackedTag = reCache[stackedTag] ||
+-                (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'));
+-            const rest = html.replace(reStackedTag, function (all, text, endTag) {
+-                endTagLength = endTag.length;
++            // Search for a fixed closing-tag prefix, then scan once for its end.
++            // Avoid a wildcard regex that retries every possible starting position.
++            const rawClose = html.match(new RegExp('</' + stackedTag, 'i'));
++            const rawStart = rawClose ? rawClose.index : -1;
++            const rawEnd = rawStart < 0 ? -1 : html.indexOf('>', rawStart + stackedTag.length + 2);
++            let rest = html;
++            if (rawEnd >= 0) {
++                endTagLength = rawEnd + 1 - rawStart;
++                let text = html.slice(0, rawStart);
+                 if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {
+-                    text = text
+-                        .replace(/<!\--([\s\S]*?)-->/g, '$1') // #7298
+-                        .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1');
+-                }
+-                if (shouldIgnoreFirstNewline(stackedTag, text)) {
+-                    text = text.slice(1);
+-                }
+-                if (options.chars) {
+-                    options.chars(text);
+-                }
+-                return '';
+-            });
++                    text = text.replace(/<!\--([\s\S]*?)-->/g, '$1').replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1');
++                }
++                if (shouldIgnoreFirstNewline(stackedTag, text)) text = text.slice(1);
++                if (options.chars) options.chars(text);
++                rest = html.slice(rawEnd + 1);
++            }
+             index += html.length - rest.length;
+             html = rest;
+             parseEndTag(stackedTag, index - endTagLength, index);
+@@ -4090,7 +4089,7 @@
+ let platformGetTagNamespace;
+ let maybeComponent;
+ function createASTElement(tag, attrs, parent) {
+-    return {
++    return Object.assign(Object.create(null), {
+         type: 1,
+         tag,
+         attrsList: attrs,
+@@ -4098,7 +4097,7 @@
+         rawAttrsMap: {},
+         parent,
+         children: []
+-    };
++    });
+ }
+ /**
+  * Convert HTML string to AST.
+--- a/browser.js
++++ b/browser.js
+@@ -463,25 +463,24 @@
+ 	            }
+ 	        }
+ 	        else {
+-	            var endTagLength_1 = 0;
+-	            var stackedTag_1 = lastTag.toLowerCase();
+-	            var reStackedTag = reCache[stackedTag_1] ||
+-	                (reCache[stackedTag_1] = new RegExp('([\\s\\S]*?)(</' + stackedTag_1 + '[^>]*>)', 'i'));
+-	            var rest = html.replace(reStackedTag, function (all, text, endTag) {
+-	                endTagLength_1 = endTag.length;
++	            let endTagLength_1 = 0;
++	            const stackedTag_1 = lastTag.toLowerCase();
++	            // Search for a fixed closing-tag prefix, then scan once for its end.
++	            // Avoid a wildcard regex that retries every possible starting position.
++	            const rawClose = html.match(new RegExp('</' + stackedTag_1, 'i'));
++	            const rawStart = rawClose ? rawClose.index : -1;
++	            const rawEnd = rawStart < 0 ? -1 : html.indexOf('>', rawStart + stackedTag_1.length + 2);
++	            let rest = html;
++	            if (rawEnd >= 0) {
++	                endTagLength_1 = rawEnd + 1 - rawStart;
++	                let text = html.slice(0, rawStart);
+ 	                if (!isPlainTextElement(stackedTag_1) && stackedTag_1 !== 'noscript') {
+-	                    text = text
+-	                        .replace(/<!\--([\s\S]*?)-->/g, '$1') // #7298
+-	                        .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1');
++	                    text = text.replace(/<!\--([\s\S]*?)-->/g, '$1').replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1');
+ 	                }
+-	                if (shouldIgnoreFirstNewline(stackedTag_1, text)) {
+-	                    text = text.slice(1);
+-	                }
+-	                if (options.chars) {
+-	                    options.chars(text);
+-	                }
+-	                return '';
+-	            });
++	                if (shouldIgnoreFirstNewline(stackedTag_1, text)) text = text.slice(1);
++	                if (options.chars) options.chars(text);
++	                rest = html.slice(rawEnd + 1);
++	            }
+ 	            index += html.length - rest.length;
+ 	            html = rest;
+ 	            parseEndTag(stackedTag_1, index - endTagLength_1, index);
+@@ -4540,7 +4539,7 @@
+ 	var platformGetTagNamespace;
+ 	var maybeComponent;
+ 	function createASTElement(tag, attrs, parent) {
+-	    return {
++	    return Object.assign(Object.create(null), {
+ 	        type: 1,
+ 	        tag: tag,
+ 	        attrsList: attrs,
+@@ -4548,7 +4547,7 @@
+ 	        rawAttrsMap: {},
+ 	        parent: parent,
+ 	        children: []
+-	    };
++	    });
+ 	}
+ 	/**
+ 	 * Convert HTML string to AST.

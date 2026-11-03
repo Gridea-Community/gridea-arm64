@@ -1,3 +1,4 @@
+import errorMessage from '../helpers/error-message'
 import fs from 'fs'
 import moment from 'moment'
 // @ts-ignore
@@ -37,7 +38,7 @@ export default class Deploy extends Model {
    * Check whether the remote connection is normal
    */
   async remoteDetect() {
-    const result = {
+    const result: { success: boolean; message: string | string[] } = {
       success: true,
       message: [''],
     }
@@ -48,7 +49,7 @@ export default class Deploy extends Model {
         await git.currentBranch({ fs, dir: this.outputDir })
         isRepo = true
       } catch (e) {
-        console.log('Not a repo', e.message)
+        console.log('Not a repo', errorMessage(e))
       }
 
       if (!setting.username || !setting.repository || !setting.token) {
@@ -85,7 +86,7 @@ export default class Deploy extends Model {
     } catch (e) {
       console.log('Test Remote Error: ', e)
       result.success = false
-      result.message = e.message
+      result.message = errorMessage(e)
     }
     return result
   }
@@ -103,7 +104,7 @@ export default class Deploy extends Model {
       await git.currentBranch({ fs, dir: this.outputDir })
       isRepo = true
     } catch (e) {
-      console.log('Not a repo', e.message)
+      console.log('Not a repo', errorMessage(e))
     }
     if (isRepo) {
       result = await this.commonPush()
@@ -154,7 +155,7 @@ export default class Deploy extends Model {
       console.log(e)
       return {
         success: false,
-        message: e.message,
+        message: errorMessage(e),
         data: localBranchs,
         localBranchs,
       }

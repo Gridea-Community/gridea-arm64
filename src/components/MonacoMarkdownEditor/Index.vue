@@ -10,6 +10,7 @@ import {
   Vue, Component, Prop, Watch, Model,
 } from 'vue-property-decorator'
 import * as monaco from 'monaco-editor'
+;(window as any).MonacoEnvironment = { getWorkerUrl: () => new URL('editor.worker.js', window.location.href).toString() }
 import * as MonacoMarkdown from 'monaco-markdown'
 import theme from './theme'
 
@@ -24,14 +25,22 @@ export default class MonacoMarkdownEditor extends Vue {
 
   prevLineCount: number = -1
 
+  updateAppearance() { monaco.editor.setTheme(document.documentElement.dataset.theme === 'dark' ? 'vs-dark' : 'GrideaLight') }
+
+  beforeDestroy() {
+    window.removeEventListener('gridea-appearance-changed', this.updateAppearance)
+    if (this.editor) this.editor.dispose()
+  }
+
   mounted() {
     monaco.editor.defineTheme('GrideaLight', theme as any)
+    window.addEventListener('gridea-appearance-changed', this.updateAppearance)
 
     this.editor = monaco.editor.create(document.getElementById('monaco-markdown-editor') as any, {
       language: 'markdown-math',
       value: this.value,
       fontSize: 15,
-      theme: 'GrideaLight',
+      theme: document.documentElement.dataset.theme === 'dark' ? 'vs-dark' : 'GrideaLight',
       lineNumbers: 'off',
       minimap: {
         enabled: false,

@@ -89,16 +89,17 @@
 </template>
 
 <script lang="ts">
+import shell from '@/helpers/renderer-link'
 import { VNodeChildren } from 'vue'
-import { ipcRenderer, IpcRendererEvent, shell } from 'electron'
+import { ipcRenderer, IpcRendererEvent, } from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
 import axios from 'axios'
 import { State, Action } from 'vuex-class'
 import AppSystem from './AppSystem/Index.vue'
 import ISnackbar from '../interfaces/snackbar'
 import { Site } from '../store/modules/site'
-import * as pkg from '../../package.json'
-import markdown from '../server/plugins/markdown'
+import pkg from '../../package.json'
+import { markdown } from '@/helpers/renderer-bridge'
 import ga from '../helpers/analytics'
 
 @Component({
@@ -176,7 +177,7 @@ export default class App extends Vue {
     this.$bus.$on('site-reload', () => {
       this.reloadSite()
     })
-    this.checkUpdate()
+    // This locally built preview has no upstream update channel.
 
     ipcRenderer.on(('log-error'), (event: any, result: any) => {
       this.log = result
@@ -253,7 +254,7 @@ export default class App extends Vue {
             })
           } else {
             this.$message.success(`🎉  ${this.$t('renderSuccess')}`)
-            this.openInBrowser(`http://localhost:${port}`)
+            this.openInBrowser(`http://127.0.0.1:${port}`)
           }
         },
       )
@@ -373,7 +374,9 @@ export default class App extends Vue {
 
 /deep/ .ant-menu {
   background: @primary-bg;
-  @apply text-gray-500;
+  --text-opacity: 1;
+  color: #666;
+  color: rgba(102, 102, 102, var(--text-opacity));
 }
 
 /deep/ .ant-menu-item {

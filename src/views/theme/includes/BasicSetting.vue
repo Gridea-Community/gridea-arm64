@@ -15,13 +15,13 @@
                 </div>
               </div>
             </a-select-option>
-            <div slot="dropdownRender" slot-scope="menu">
+            <template #dropdownRender="menu"><div>
               <v-nodes :vnodes="menu"/>
               <a-divider style="margin: 4px 0;" />
               <div class="p-2 flex items-center cursor-pointer" @click="openPage('https://gridea.dev/themes/')">
                 <i class="ri-t-shirt-line mr-2"></i> {{ $t('moreThemes') }}
               </div>
-            </div>
+            </div></template>
           </a-select>
         </a-form-item>
 
@@ -117,7 +117,8 @@
 </template>
 
 <script lang="ts">
-import { ipcRenderer, IpcRendererEvent, shell } from 'electron'
+import shell from '@/helpers/renderer-link'
+import { ipcRenderer, IpcRendererEvent, } from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
 import { ValidationProvider, ValidationObserver } from 'vee-validate'
 import { State } from 'vuex-class'
@@ -181,9 +182,10 @@ export default class ThemeBasicSetting extends Vue {
   saveTheme() {
     ipcRenderer.send('theme-save', this.form)
     ipcRenderer.once('theme-saved', async (event: IpcRendererEvent, result: any) => {
+      if (!result) { this.$message.error(String(this.$t('saveError'))); return }
       await this.$bus.$emit('site-reload')
       this.$router.push({ name: 'loading', query: { redirect: 'theme?tab=basic' } })
-      this.$message.success(this.$t('themeConfigSaved'))
+      this.$message.success(String(this.$t('themeConfigSaved')))
 
       ga.event('Theme', 'Theme - save', { evLabel: this.form.themeName })
     })

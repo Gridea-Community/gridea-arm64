@@ -55,17 +55,17 @@
                   listType="picture-card"
                   class="feature-uploader"
                   :showUploadList="false"
-                  :beforeUpload="file => beforeImageUpload(file, item.name)"
+                  :beforeUpload="imageUploader(item.name)"
                 >
                   <div v-if="form[item.name] && form[item.name].startsWith('/media/')">
-                    <img class="picture" :src="`file://${site.appDir}/themes/${site.themeConfig.themeName}/assets${form[item.name]}`" height="150" />
+                    <img class="picture" :src="$localURL(`file://${site.appDir}/themes/${site.themeConfig.themeName}/assets${form[item.name]}`)" height="150" />
                   </div>
                   <div v-else-if="form[item.name] === ''">
                     <img src="@/assets/images/image_upload.svg" class="picture">
                     <i class="zwicon-upload upload-icon"></i>
                   </div>
                   <div v-else>
-                    <img class="picture" :src="`file://${form[item.name]}`" alt="">
+                    <img class="picture" :src="$localURL(`file://${form[item.name]}`)" alt="">
                   </div>
                 </a-upload>
                 <a-tooltip placement="left" title="Reset">
@@ -134,17 +134,17 @@
                           listType="picture-card"
                           class="feature-uploader"
                           :showUploadList="false"
-                          :beforeUpload="file => beforeImageUpload(file, item.name, field.name, configItemIndex)"
+                          :beforeUpload="imageUploader(item.name, field.name, configItemIndex)"
                         >
                           <div v-if="configItem[field.name] && configItem[field.name].startsWith('/media/')">
-                            <img class="picture" :src="`file://${site.appDir}/themes/${site.themeConfig.themeName}/assets${configItem[field.name]}`" height="150" />
+                            <img class="picture" :src="$localURL(`file://${site.appDir}/themes/${site.themeConfig.themeName}/assets${configItem[field.name]}`)" height="150" />
                           </div>
                           <div v-else-if="configItem[field.name] === ''">
                             <img src="@/assets/images/image_upload.svg" class="picture">
                             <i class="zwicon-upload upload-icon"></i>
                           </div>
                           <div v-else>
-                            <img class="picture" :src="`file://${configItem[field.name]}`" alt="">
+                            <img class="picture" :src="$localURL(`file://${configItem[field.name]}`)" alt="">
                           </div>
                         </a-upload>
                         <a-tooltip placement="left" title="Reset">
@@ -189,7 +189,9 @@
 </template>
 
 <script lang="ts">
-import { ipcRenderer, IpcRendererEvent, shell } from 'electron'
+import shell from '@/helpers/renderer-link'
+import localFilePath from '@/helpers/local-file'
+import { ipcRenderer, IpcRendererEvent, } from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 import urlJoin from 'url-join'
@@ -274,8 +276,9 @@ export default class ThemeCustomSetting extends Vue {
     console.log('this.form', this.form)
     ipcRenderer.send('theme-custom-config-save', this.form)
     ipcRenderer.once('theme-custom-config-saved', (event: IpcRendererEvent, result: any) => {
+      if (!result) { this.$message.error(String(this.$t('saveError'))); return }
       this.$bus.$emit('site-reload')
-      this.$message.success(this.$t('saved'))
+      this.$message.success(String(this.$t('saved')))
     })
   }
 
@@ -288,9 +291,10 @@ export default class ThemeCustomSetting extends Vue {
       onOk: () => {
         ipcRenderer.send('theme-custom-config-save', {})
         ipcRenderer.once('theme-custom-config-saved', async (event: IpcRendererEvent, result: any) => {
+      if (!result) { this.$message.error(String(this.$t('saveError'))); return }
           await this.$bus.$emit('site-reload')
           this.$router.push({ name: 'loading', query: { redirect: 'theme?tab=custom' } })
-          this.$message.success(this.$t('reseted'))
+          this.$message.success(String(this.$t('reseted')))
         })
       },
     })
@@ -313,17 +317,21 @@ export default class ThemeCustomSetting extends Vue {
     }
   }
 
+  imageUploader(name: string, field?: string, index?: number) {
+    return (file: File) => this.beforeImageUpload(file, name, field, index)
+  }
+
   beforeImageUpload(file: any, formItemName: string, arrayFieldItemName?: string, configItemIndex?: number) {
     if (!file) {
       return
     }
 
     if (arrayFieldItemName && typeof configItemIndex === 'number') {
-      this.form[formItemName][configItemIndex][arrayFieldItemName] = file.path
+      this.form[formItemName][configItemIndex][arrayFieldItemName] = localFilePath(file)
       return false
     }
 
-    this.form[formItemName] = file.path
+    this.form[formItemName] = localFilePath(file)
     return false
   }
 

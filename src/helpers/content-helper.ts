@@ -31,7 +31,7 @@ export default class ContentHelper {
    */
   changeImageUrlDomainToLocal(content: string, localPath: string) {
     localPath = localPath.replace(/\\/g, '/')
-    return content.replace(this.domainReg, `(file://${localPath}/post-images/`)
+    return content.replace(this.domainReg, `(file://${encodeURI(localPath)}/post-images/`)
   }
 
   /**

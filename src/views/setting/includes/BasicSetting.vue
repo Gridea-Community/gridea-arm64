@@ -112,7 +112,7 @@
 </template>
 
 <script lang="ts">
-import { ipcRenderer, IpcRendererEvent } from 'electron'
+import { ipcRenderer, IpcRendererEvent } from '@/helpers/renderer-bridge'
 import { Vue, Component, Watch } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 import FooterBox from '../../../components/FooterBox/Index.vue'
@@ -211,7 +211,7 @@ export default class BasicSetting extends Vue {
   //  */
   // checkFormValid() {
   //   // if (!['https://', 'http://'].some(d => this.form.domain.startsWith(d))) {
-  //   //   this.$message.warn(this.$t('domainShouldStartsWithWarn'))
+  //   //   this.$message.warn(String(this.$t('domainShouldStartsWithWarn')))
   //   //   return false
   //   // }
   //   return true
@@ -234,8 +234,9 @@ export default class BasicSetting extends Vue {
 
     ipcRenderer.send('setting-save', form)
     ipcRenderer.once('setting-saved', (event: IpcRendererEvent, result: any) => {
+      if (!result) { this.$message.error(String(this.$t('saveError'))); return }
       this.$bus.$emit('site-reload')
-      this.$message.success(this.$t('basicSettingSuccess'))
+      this.$message.success(String(this.$t('basicSettingSuccess')))
 
       ga.event('Setting', 'Setting - save', { evLabel: this.form.platform })
     })
@@ -248,7 +249,8 @@ export default class BasicSetting extends Vue {
     }
 
     ipcRenderer.send('setting-save', form)
-    ipcRenderer.once('setting-saved', () => {
+    ipcRenderer.once('setting-saved', (event: IpcRendererEvent, result: any) => {
+      if (!result) { this.$message.error(String(this.$t('saveError'))); return }
       ipcRenderer.send('app-site-reload')
       ipcRenderer.once('app-site-loaded', () => {
         this.detectLoading = true
@@ -259,11 +261,11 @@ export default class BasicSetting extends Vue {
           console.log('检测结果', result)
           this.detectLoading = false
           if (result.success) {
-            this.$message.success(this.$t('connectSuccess'))
+            this.$message.success(String(this.$t('connectSuccess')))
 
             ga.event('Setting', 'Setting - detect-success', { evLabel: this.form.platform })
           } else {
-            this.$message.error(this.$t('connectFailed'))
+            this.$message.error(String(this.$t('connectFailed')))
 
             ga.event('Setting', 'Setting - detect-failed', { evLabel: this.form.platform })
           }

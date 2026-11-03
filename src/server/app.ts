@@ -2,6 +2,8 @@ import { BrowserWindow, app } from 'electron'
 import * as fse from 'fs-extra'
 import * as path from 'path'
 import express from 'express'
+import { atomicWrite } from '../helpers/atomic-file'
+import { assertSelectedFolder } from '../helpers/file-access'
 import EventClasses from './events/index'
 import Posts from './posts'
 import Tags from './tags'
@@ -149,7 +151,6 @@ export default class App {
       ...this.db,
       currentThemeConfig,
       appDir: this.appDir,
-      mainWindow: this.mainWindow,
     }
   }
 
@@ -160,21 +161,33 @@ export default class App {
   }
 
   public async saveSourceFolderSetting(sourceFolderPath: string = '') {
+    const previous = this.appDir
+    const appConfigPath = path.join(this.app.getPath('home'), '.gridea', 'config.json')
     try {
-      const appConfigFolder = path.join(this.app.getPath('home'), '.gridea')
-      const appConfigPath = path.join(appConfigFolder, 'config.json')
-      const jsonString = `{"sourceFolder": "${sourceFolderPath || this.appDir}"}`
-
-      fse.writeFileSync(appConfigPath, jsonString)
-      const appConfig = fse.readJsonSync(appConfigPath)
-      this.appDir = appConfig.sourceFolder
+      const selected = assertSelectedFolder(sourceFolderPath || previous, previous)
+      const entries = fse.readdirSync(selected).filter(name => name !== '.DS_Store')
+      if (entries.length && !fse.pathExistsSync(path.join(selected, 'config/theme.json'))) {
+        throw new Error('Choose a Gridea site folder or an empty folder')
+      }
+      if (entries.length) {
+        const theme = fse.readJsonSync(path.join(selected, 'config/theme.json'))
+        const setting = fse.readJsonSync(path.join(selected, 'config/setting.json'))
+        const posts = fse.readJsonSync(path.join(selected, 'config/posts.json'))
+        if (!theme || !theme.config || typeof theme.config.themeName !== 'string' ||
+            !setting || !setting.config || !posts || !Array.isArray(posts.posts) ||
+            !Array.isArray(posts.tags) || !Array.isArray(posts.menus)) {
+          throw new Error('Invalid Gridea site configuration')
+        }
+      }
+      atomicWrite(appConfigPath, JSON.stringify({ sourceFolder: selected }))
+      if (this.checkDir() === false) throw new Error('Cannot initialize the selected site')
       this.updateStaticServer()
-
-      this.checkDir()
-
       return true
     } catch (e) {
-      console.log(e)
+      this.appDir = previous
+      try { atomicWrite(appConfigPath, JSON.stringify({ sourceFolder: previous })) } catch (_) { /* Preserve the original error. */ }
+      this.initEvents()
+      console.error('Source folder change failed:', e)
       return false
     }
   }
@@ -182,7 +195,7 @@ export default class App {
   /**
    * Check if the hve-next folder exists, if it does not exist, it is initialized
    */
-  private async checkDir() {
+  private checkDir() {
     // Check if there is a .hve-notes folder, if it exists, load it, otherwise use the default configuration.
     const appConfigFolderOld = path.join(this.app.getPath('home'), '.hve-notes') // < 0.7.7
 
@@ -203,8 +216,8 @@ export default class App {
 
       if (!fse.pathExistsSync(appConfigFolder)) {
         fse.mkdirSync(appConfigFolder)
-        const jsonString = `{"sourceFolder": "${defaultAppDir}"}`
-        fse.writeFileSync(appConfigPath, jsonString)
+        const jsonString = JSON.stringify({ sourceFolder: defaultAppDir })
+        atomicWrite(appConfigPath, jsonString)
       }
 
       const buildDir = path.join(appConfigFolder, 'output')
@@ -248,8 +261,8 @@ export default class App {
 
       // Site folder not exists
       this.appDir = defaultAppDir
-      const jsonString = `{"sourceFolder": "${defaultAppDir}"}`
-      fse.writeFileSync(appConfigPath, jsonString)
+      const jsonString = JSON.stringify({ sourceFolder: defaultAppDir })
+      atomicWrite(appConfigPath, jsonString)
       fse.mkdirSync(this.appDir)
 
       fse.copySync(
@@ -258,6 +271,7 @@ export default class App {
       )
     } catch (e) {
       console.log('Error', e)
+      return false
     } finally {
       this.initEvents()
     }

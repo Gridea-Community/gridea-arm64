@@ -1,8 +1,9 @@
+import errorMessage from '../../../helpers/error-message'
 import * as fse from 'fs-extra'
 // import * as fs from 'fs'
 import path from 'path'
 import SftpClient from 'ssh2-sftp-client'
-import NodeSsh from 'node-ssh'
+import { NodeSSH as NodeSsh } from 'node-ssh'
 import normalizePath from 'normalize-path'
 import Model from '../../model'
 
@@ -43,9 +44,9 @@ export default class SftpDeploy extends Model {
       try {
         connectConfig.privateKey = fse.readFileSync(setting.privateKey)
       } catch (e) {
-        console.error('SFTP Test Remote Error: ', e.message)
+        console.error('SFTP Test Remote Error: ', errorMessage(e))
         result.success = false
-        result.message = e.message
+        result.message = errorMessage(e)
         return result
       }
     } else {
@@ -66,18 +67,18 @@ export default class SftpDeploy extends Model {
         await client.put(localTestFilePath, remoteTestFilePath)
         await client.delete(remoteTestFilePath)
       } catch (e) {
-        console.error('SFTP Test Remote Error: ', e.message)
+        console.error('SFTP Test Remote Error: ', errorMessage(e))
         result.success = false
-        result.message = e.message
+        result.message = errorMessage(e)
       } finally {
         if (fse.existsSync(localTestFilePath)) {
           fse.unlinkSync(localTestFilePath)
         }
       }
     } catch (e) {
-      console.error('SFTP Test Remote Error: ', e.message)
+      console.error('SFTP Test Remote Error: ', errorMessage(e))
       result.success = false
-      result.message = e.message
+      result.message = errorMessage(e)
     } finally {
       await client.end()
     }
@@ -104,7 +105,7 @@ export default class SftpDeploy extends Model {
 
     // node-ssh: privateKey is path string.
     if (setting.privateKey) {
-      connectConfig.privateKey = setting.privateKey
+      connectConfig.privateKey = fse.readFileSync(setting.privateKey)
     } else {
       connectConfig.password = setting.password
     }
@@ -115,7 +116,7 @@ export default class SftpDeploy extends Model {
     try {
       await client.connect(connectConfig)
       try {
-        await client.exec(`rm -rf ${remotePath}`)
+        await client.execCommand(`rm -rf ${remotePath}`)
         await client.mkdir(remotePath)
         const res = await client.putDirectory(localPath, remotePath, {
           recursive: true,
@@ -127,14 +128,14 @@ export default class SftpDeploy extends Model {
           },
         })
       } catch (e) {
-        console.error('SFTP Publish Error: ', e.message)
+        console.error('SFTP Publish Error: ', errorMessage(e))
         result.success = false
-        result.message = e.message
+        result.message = errorMessage(e)
       }
     } catch (e) {
-      console.error('SFTP Publish Error: ', e.message)
+      console.error('SFTP Publish Error: ', errorMessage(e))
       result.success = false
-      result.message = e.message
+      result.message = errorMessage(e)
     } finally {
       await client.dispose()
     }

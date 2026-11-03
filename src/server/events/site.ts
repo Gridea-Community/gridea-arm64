@@ -1,4 +1,5 @@
-import { ipcMain, IpcMainEvent } from 'electron'
+import { IpcMainEvent } from 'electron'
+import ipcMain from '../../helpers/trusted-ipc'
 
 export default class SiteEvents {
   constructor(appInstance: any) {

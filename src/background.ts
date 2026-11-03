@@ -1,27 +1,61 @@
+import { grantFolder } from './helpers/file-access'
+import editorPermission from './helpers/editor-permissions'
+import ipcMain, { setTrustedWindow } from './helpers/trusted-ipc'
+import shell from './helpers/external-link'
 import {
-  app, protocol, BrowserWindow, Menu, shell,
+  app, protocol, BrowserWindow, Menu, dialog, nativeTheme,
 } from 'electron'
-import {
-  createProtocol,
-} from 'vue-cli-plugin-electron-builder/lib'
-import { autoUpdater } from 'electron-updater'
-import { init } from '@sentry/electron/dist/main'
+import createProtocol from './helpers/protocol'
 import App from './server/app'
 import messages from './assets/locales-menu'
 import initServer from './server'
+import path from 'path'
+import { registerMediaProtocol, grantImage } from './helpers/media-protocol'
 
-init({ dsn: 'https://6a6dacc57a6a4e27a88eb31596c152f8@sentry.io/1887150' })
+ipcMain.on('app-appearance', (_event, mode) => {
+  if (['system', 'light', 'dark'].includes(mode)) nativeTheme.themeSource = mode
+})
+ipcMain.on('app-locale', event => { event.returnValue = app.getLocale() })
+ipcMain.handle('app-select-folder', async () => {
+  const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+  if (!result.canceled) result.filePaths.forEach(grantFolder)
+  return result
+})
+ipcMain.handle('app-open-external', (_event, url) => shell.openExternal(url))
+ipcMain.on('app-grant-image', (event, value) => { event.returnValue = grantImage(value) })
+ipcMain.on('app-relaunch', () => { app.relaunch(); app.quit() })
+
+// Allow smoke tests to use an isolated profile and sample blog.
+if (process.env.GRIDEA_TEST_HOME) {
+  app.setPath('home', process.env.GRIDEA_TEST_HOME)
+  app.setPath('documents', process.env.GRIDEA_TEST_HOME)
+  app.setPath('userData', process.env.GRIDEA_TEST_HOME)
+}
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let win: any
+const primaryInstance = app.requestSingleInstanceLock()
+if (!primaryInstance) app.quit()
+app.on('second-instance', () => {
+  if (win && !win.isDestroyed()) {
+    if (win.isMinimized()) win.restore()
+    win.show()
+    win.focus()
+  } else if (app.isReady()) createWindow()
+})
 let menu: Menu
-let httpServer: any
+let httpServer: ReturnType<typeof initServer> | null = null
+let protocolRegistered = false
+let currentApp: App | null = null
 
 // Standard scheme must be registered before the app is ready
-protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { secure: true, standard: true } }])
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } },
+  { scheme: 'app-media', privileges: { secure: true, standard: true, supportFetchAPI: true } },
+])
 function createWindow() {
   // Create the browser window.
   const winOption: any = {
@@ -30,9 +64,11 @@ function createWindow() {
     minHeight: 642,
     minWidth: 1000,
     webPreferences: {
-      webSecurity: false, // FIXED: Not allowed to load local resource
-      nodeIntegration: true,
-      enableRemoteModule: true, // FIXED: 兼容 electron@11.0.1
+      webSecurity: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false, // Preload runs the legacy Markdown engine in its isolated world.
+      preload: path.join(__dirname, 'preload.js'),
     },
     // frame: false, // 去除默认窗口栏
     titleBarStyle: 'hiddenInset' as ('hidden' | 'default' | 'hiddenInset' | 'customButtonsOnHover' | undefined),
@@ -43,17 +79,40 @@ function createWindow() {
   }
 
   win = new BrowserWindow(winOption)
-  win.setTitle('Gridea')
+  setTrustedWindow(win)
+  win.webContents.setWindowOpenHandler(({ url }: { url: string }) => {
+    shell.openExternal(url).catch(() => {})
+    return { action: 'deny' }
+  })
+  win.webContents.on('will-navigate', (event: any) => event.preventDefault())
+  win.webContents.on('will-redirect', (event: any) => event.preventDefault())
+  win.webContents.on('will-attach-webview', (event: any) => event.preventDefault())
+  const contents = win.webContents
+  contents.session.setPermissionRequestHandler((sender: any, permission: string, callback: any, details: any) => {
+    callback(sender === contents && editorPermission(permission, details.requestingUrl, details.isMainFrame))
+  })
+  contents.session.setPermissionCheckHandler((sender: any, permission: string, _origin: string, details: any) => (
+    sender === contents && editorPermission(permission, details.requestingUrl, details.isMainFrame)
+  ))
+  win.setTitle('Gridea for ARM64')
+  if (process.env.GRIDEA_TEST_HOME) {
+    win.webContents.on('console-message', (_event: any, ...details: any[]) => console.log('Renderer:', ...details))
+    win.webContents.on('render-process-gone', (_event: any, details: any) => console.error('Renderer exit:', details))
+  }
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
     win.loadURL(process.env.WEBPACK_DEV_SERVER_URL as string)
     if (!process.env.IS_TEST) { win.webContents.openDevTools() }
   } else {
-    createProtocol('app')
+    if (!protocolRegistered) {
+      createProtocol('app', __dirname)
+      registerMediaProtocol(() => currentApp ? [currentApp.appDir] : [])
+      protocolRegistered = true
+    }
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
-    autoUpdater.checkForUpdatesAndNotify()
+
   }
 
   win.on('closed', () => {
@@ -93,7 +152,8 @@ function createWindow() {
       role: 'windowMenu',
     },
     {
-      role: menuLabels.help,
+      role: 'help',
+      label: menuLabels.help,
       submenu: [
         {
           label: 'Learn More',
@@ -103,11 +163,12 @@ function createWindow() {
     },
   ]
 
+  if (process.platform === 'darwin') template.unshift({ role: 'appMenu' })
   menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
 
   const s = initServer()
-  httpServer = s.server
+  httpServer = s
 
   const setting = {
     mainWindow: win,
@@ -118,6 +179,7 @@ function createWindow() {
 
   // Init app
   const appInstance = new App(setting)
+  currentApp = appInstance
   console.log('Main process runing...', appInstance.appDir) // DELETE ME
 }
 
@@ -132,6 +194,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
+  if (!primaryInstance) return
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (win === null) {
@@ -143,10 +206,12 @@ app.on('activate', () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
+  if (!primaryInstance) return
   // if (isDevelopment && !process.env.IS_TEST) {
   //   // Install Vue Devtools
   //   await installVueDevtools()
   // }
+  if (process.platform === 'darwin' && app.dock) app.dock.setIcon(`${__dirname}/app-icons/gridea.png`)
   createWindow()
 })
 
@@ -196,7 +261,6 @@ if (isDevelopment) {
  */
 
 /*
-import { autoUpdater } from 'electron-updater'
 
 autoUpdater.on('update-downloaded', () => {
   autoUpdater.quitAndInstall()

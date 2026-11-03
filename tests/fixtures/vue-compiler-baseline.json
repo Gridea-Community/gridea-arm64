@@ -1,0 +1,252 @@
+{
+  "@vue/compiler-sfc": [
+    {
+      "source": "<div>中文 😀</div>",
+      "sha256": "fd50a39ce4ac228f9d2bf4e927429eecd5150e2c2e1b6b9877e9fc81a6377540"
+    },
+    {
+      "source": "<div id=\"safe\">{{value}}</div>",
+      "sha256": "48962881669551db1dc52399f963c48b414ecc176a77e7ddfaa2846ece5c0cc9"
+    },
+    {
+      "source": "<div class=\"one two\" :class=\"active\" style=\"color:red\" :style=\"style\">{{value}}</div>",
+      "sha256": "d78f998101bea8ce2d84838c26a90d3824907798c2d1109c17fbba802c853372"
+    },
+    {
+      "source": "<ul><li v-for=\"(item, index) in items\" :key=\"item.id\">{{index}} {{item.name}}</li></ul>",
+      "sha256": "cc31e37eb130476fb758538d882db61c6fca9929a7bba32ca74aa2b87ef4d00e"
+    },
+    {
+      "source": "<input v-model=\"value\" :disabled=\"disabled\" @input=\"onInput\">",
+      "sha256": "aeec8e9e1414b56e17af009421e7efa1c00b7886b950648e952f5ac9a2c9cec5"
+    },
+    {
+      "source": "<div><span v-if=\"ok\">Yes</span><span v-else>No</span></div>",
+      "sha256": "57748dd52bbf67be8cd22295bbde0df0270faf978dbf12b9acb847e6f46dcb4b"
+    },
+    {
+      "source": "<component :is=\"view\"><template #default=\"slot\">{{slot.value}}</template></component>",
+      "sha256": "b1dccd6fe20ac5b70b522621cf40565a3dd79fc8ee534267a9271314b5fe0446"
+    },
+    {
+      "source": "<textarea>line one\n&lt;tag&gt;</textarea>",
+      "sha256": "9d45a8540aeffc1bb31608d13984882866c739deaa559a8628db1539c6af94b5"
+    },
+    {
+      "source": "<textarea>UPPER</TEXTAREA>",
+      "sha256": "a42138f6bc9c4eb38a8c447195d7def80667ed922ba27fedd755fdab7923162c"
+    },
+    {
+      "source": "<div><textarea>missing</script></div>",
+      "sha256": "4563731248712d2e111b0a38d288c1b9c3af075ae0c0172b07d8b480802612f6"
+    },
+    {
+      "source": "<div><textarea>a</textarea data-extra><b>after</b></div>",
+      "sha256": "b6906dcef19d3e9cf1d625a1369abfbcaadbe7d7e7d58b43d352586d02eb41d1"
+    },
+    {
+      "source": "<div v-html=\"html\" data-name=\"中文\"></div>",
+      "sha256": "0782e4414cf32a7e86cbc0e72caa81a7b90e4bec00ce843ddabe1cc05b232462"
+    }
+  ],
+  "@vue/compiler-vue2": [
+    {
+      "source": "<div>中文 😀</div>",
+      "sha256": "58e2de7be849aaff6deaecf45dfba323eda13fa1a18716786cd75dfe008cb107"
+    },
+    {
+      "source": "<div id=\"safe\">{{value}}</div>",
+      "sha256": "2c04747c1f3fc94c0eed11ec759dcc41fa8310a8d6ecefbf0511c84e0795a3bf"
+    },
+    {
+      "source": "<div class=\"one two\" :class=\"active\" style=\"color:red\" :style=\"style\">{{value}}</div>",
+      "sha256": "5bf11a4ba218d07e7c49f04d8a5629be24c551fb9839d993b0e887c031cf3ca0"
+    },
+    {
+      "source": "<ul><li v-for=\"(item, index) in items\" :key=\"item.id\">{{index}} {{item.name}}</li></ul>",
+      "sha256": "6bf564e021efbf78bed8eb94c4920b5a49d650b669f693595c7e562d9c991442"
+    },
+    {
+      "source": "<input v-model=\"value\" :disabled=\"disabled\" @input=\"onInput\">",
+      "sha256": "27e10a27d26cdc10a356fec0d2290b15c39eb0d99517520367788ea7a2d5a52c"
+    },
+    {
+      "source": "<div><span v-if=\"ok\">Yes</span><span v-else>No</span></div>",
+      "sha256": "156699dac24b7faa9bf539380bffa35d01be48dace8220c0b61cf580df4c9d71"
+    },
+    {
+      "source": "<component :is=\"view\"><template #default=\"slot\">{{slot.value}}</template></component>",
+      "sha256": "9ce56b71b9d3ebd94cf3f9dfb69ae1fb549e560acf570b634035adb051728487"
+    },
+    {
+      "source": "<textarea>line one\n&lt;tag&gt;</textarea>",
+      "sha256": "da935d8ba076dfba20538e187e78f1f06a15a8eae73509db2018ec91fe531420"
+    },
+    {
+      "source": "<textarea>UPPER</TEXTAREA>",
+      "sha256": "10c41fcdfcb46baaa95522b37ff53c68a41f78bc7c9e6a4a06e9467c8ae2e06c"
+    },
+    {
+      "source": "<div><textarea>missing</script></div>",
+      "sha256": "5cf952e826231ae6d5ed6873f44b9d7dd2a614036c947d54d66f81a03848bca2"
+    },
+    {
+      "source": "<div><textarea>a</textarea data-extra><b>after</b></div>",
+      "sha256": "668961cef03d9ec8dfd346c1562c32c5a942c4fcd9753437598e6aaaee5aa6e0"
+    },
+    {
+      "source": "<div v-html=\"html\" data-name=\"中文\"></div>",
+      "sha256": "6468f0b88b45565110b77f20b7aac852b91934dd8f5a7c6ab281d0f54b5b3446"
+    }
+  ],
+  "@vue/compiler-vue2/browser.js": [
+    {
+      "source": "<div>中文 😀</div>",
+      "sha256": "58e2de7be849aaff6deaecf45dfba323eda13fa1a18716786cd75dfe008cb107"
+    },
+    {
+      "source": "<div id=\"safe\">{{value}}</div>",
+      "sha256": "2c04747c1f3fc94c0eed11ec759dcc41fa8310a8d6ecefbf0511c84e0795a3bf"
+    },
+    {
+      "source": "<div class=\"one two\" :class=\"active\" style=\"color:red\" :style=\"style\">{{value}}</div>",
+      "sha256": "5bf11a4ba218d07e7c49f04d8a5629be24c551fb9839d993b0e887c031cf3ca0"
+    },
+    {
+      "source": "<ul><li v-for=\"(item, index) in items\" :key=\"item.id\">{{index}} {{item.name}}</li></ul>",
+      "sha256": "6bf564e021efbf78bed8eb94c4920b5a49d650b669f693595c7e562d9c991442"
+    },
+    {
+      "source": "<input v-model=\"value\" :disabled=\"disabled\" @input=\"onInput\">",
+      "sha256": "27e10a27d26cdc10a356fec0d2290b15c39eb0d99517520367788ea7a2d5a52c"
+    },
+    {
+      "source": "<div><span v-if=\"ok\">Yes</span><span v-else>No</span></div>",
+      "sha256": "156699dac24b7faa9bf539380bffa35d01be48dace8220c0b61cf580df4c9d71"
+    },
+    {
+      "source": "<component :is=\"view\"><template #default=\"slot\">{{slot.value}}</template></component>",
+      "sha256": "9ce56b71b9d3ebd94cf3f9dfb69ae1fb549e560acf570b634035adb051728487"
+    },
+    {
+      "source": "<textarea>line one\n&lt;tag&gt;</textarea>",
+      "sha256": "da935d8ba076dfba20538e187e78f1f06a15a8eae73509db2018ec91fe531420"
+    },
+    {
+      "source": "<textarea>UPPER</TEXTAREA>",
+      "sha256": "10c41fcdfcb46baaa95522b37ff53c68a41f78bc7c9e6a4a06e9467c8ae2e06c"
+    },
+    {
+      "source": "<div><textarea>missing</script></div>",
+      "sha256": "5cf952e826231ae6d5ed6873f44b9d7dd2a614036c947d54d66f81a03848bca2"
+    },
+    {
+      "source": "<div><textarea>a</textarea data-extra><b>after</b></div>",
+      "sha256": "668961cef03d9ec8dfd346c1562c32c5a942c4fcd9753437598e6aaaee5aa6e0"
+    },
+    {
+      "source": "<div v-html=\"html\" data-name=\"中文\"></div>",
+      "sha256": "6468f0b88b45565110b77f20b7aac852b91934dd8f5a7c6ab281d0f54b5b3446"
+    }
+  ],
+  "vue-template-compiler": [
+    {
+      "source": "<div>中文 😀</div>",
+      "sha256": "58e2de7be849aaff6deaecf45dfba323eda13fa1a18716786cd75dfe008cb107"
+    },
+    {
+      "source": "<div id=\"safe\">{{value}}</div>",
+      "sha256": "2c04747c1f3fc94c0eed11ec759dcc41fa8310a8d6ecefbf0511c84e0795a3bf"
+    },
+    {
+      "source": "<div class=\"one two\" :class=\"active\" style=\"color:red\" :style=\"style\">{{value}}</div>",
+      "sha256": "5bf11a4ba218d07e7c49f04d8a5629be24c551fb9839d993b0e887c031cf3ca0"
+    },
+    {
+      "source": "<ul><li v-for=\"(item, index) in items\" :key=\"item.id\">{{index}} {{item.name}}</li></ul>",
+      "sha256": "6bf564e021efbf78bed8eb94c4920b5a49d650b669f693595c7e562d9c991442"
+    },
+    {
+      "source": "<input v-model=\"value\" :disabled=\"disabled\" @input=\"onInput\">",
+      "sha256": "27e10a27d26cdc10a356fec0d2290b15c39eb0d99517520367788ea7a2d5a52c"
+    },
+    {
+      "source": "<div><span v-if=\"ok\">Yes</span><span v-else>No</span></div>",
+      "sha256": "156699dac24b7faa9bf539380bffa35d01be48dace8220c0b61cf580df4c9d71"
+    },
+    {
+      "source": "<component :is=\"view\"><template #default=\"slot\">{{slot.value}}</template></component>",
+      "sha256": "9ce56b71b9d3ebd94cf3f9dfb69ae1fb549e560acf570b634035adb051728487"
+    },
+    {
+      "source": "<textarea>line one\n&lt;tag&gt;</textarea>",
+      "sha256": "da935d8ba076dfba20538e187e78f1f06a15a8eae73509db2018ec91fe531420"
+    },
+    {
+      "source": "<textarea>UPPER</TEXTAREA>",
+      "sha256": "10c41fcdfcb46baaa95522b37ff53c68a41f78bc7c9e6a4a06e9467c8ae2e06c"
+    },
+    {
+      "source": "<div><textarea>missing</script></div>",
+      "sha256": "5cf952e826231ae6d5ed6873f44b9d7dd2a614036c947d54d66f81a03848bca2"
+    },
+    {
+      "source": "<div><textarea>a</textarea data-extra><b>after</b></div>",
+      "sha256": "668961cef03d9ec8dfd346c1562c32c5a942c4fcd9753437598e6aaaee5aa6e0"
+    },
+    {
+      "source": "<div v-html=\"html\" data-name=\"中文\"></div>",
+      "sha256": "6468f0b88b45565110b77f20b7aac852b91934dd8f5a7c6ab281d0f54b5b3446"
+    }
+  ],
+  "vue-template-compiler/browser.js": [
+    {
+      "source": "<div>中文 😀</div>",
+      "sha256": "58e2de7be849aaff6deaecf45dfba323eda13fa1a18716786cd75dfe008cb107"
+    },
+    {
+      "source": "<div id=\"safe\">{{value}}</div>",
+      "sha256": "2c04747c1f3fc94c0eed11ec759dcc41fa8310a8d6ecefbf0511c84e0795a3bf"
+    },
+    {
+      "source": "<div class=\"one two\" :class=\"active\" style=\"color:red\" :style=\"style\">{{value}}</div>",
+      "sha256": "5bf11a4ba218d07e7c49f04d8a5629be24c551fb9839d993b0e887c031cf3ca0"
+    },
+    {
+      "source": "<ul><li v-for=\"(item, index) in items\" :key=\"item.id\">{{index}} {{item.name}}</li></ul>",
+      "sha256": "6bf564e021efbf78bed8eb94c4920b5a49d650b669f693595c7e562d9c991442"
+    },
+    {
+      "source": "<input v-model=\"value\" :disabled=\"disabled\" @input=\"onInput\">",
+      "sha256": "27e10a27d26cdc10a356fec0d2290b15c39eb0d99517520367788ea7a2d5a52c"
+    },
+    {
+      "source": "<div><span v-if=\"ok\">Yes</span><span v-else>No</span></div>",
+      "sha256": "156699dac24b7faa9bf539380bffa35d01be48dace8220c0b61cf580df4c9d71"
+    },
+    {
+      "source": "<component :is=\"view\"><template #default=\"slot\">{{slot.value}}</template></component>",
+      "sha256": "9ce56b71b9d3ebd94cf3f9dfb69ae1fb549e560acf570b634035adb051728487"
+    },
+    {
+      "source": "<textarea>line one\n&lt;tag&gt;</textarea>",
+      "sha256": "da935d8ba076dfba20538e187e78f1f06a15a8eae73509db2018ec91fe531420"
+    },
+    {
+      "source": "<textarea>UPPER</TEXTAREA>",
+      "sha256": "10c41fcdfcb46baaa95522b37ff53c68a41f78bc7c9e6a4a06e9467c8ae2e06c"
+    },
+    {
+      "source": "<div><textarea>missing</script></div>",
+      "sha256": "5cf952e826231ae6d5ed6873f44b9d7dd2a614036c947d54d66f81a03848bca2"
+    },
+    {
+      "source": "<div><textarea>a</textarea data-extra><b>after</b></div>",
+      "sha256": "668961cef03d9ec8dfd346c1562c32c5a942c4fcd9753437598e6aaaee5aa6e0"
+    },
+    {
+      "source": "<div v-html=\"html\" data-name=\"中文\"></div>",
+      "sha256": "6468f0b88b45565110b77f20b7aac852b91934dd8f5a7c6ab281d0f54b5b3446"
+    }
+  ]
+}

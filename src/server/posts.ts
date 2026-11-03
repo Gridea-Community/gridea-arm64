@@ -1,3 +1,4 @@
+import { assertImageAccess, assertDestination } from '../helpers/file-access'
 import * as fs from 'fs'
 import * as fse from 'fs-extra'
 import * as path from 'path'
@@ -11,6 +12,12 @@ import ContentHelper from '../helpers/content-helper'
 import { formatYamlString } from '../helpers/utils'
 
 Bluebird.promisifyAll(fs)
+
+export function assertPostName(value: string) {
+  if (typeof value !== 'string' || !value || value === '.' || value === '..' || /[\\/\x00-\x1f]/.test(value)) {
+    throw new Error('Invalid article filename')
+  }
+}
 
 export default class Posts extends Model {
   postDir: string
@@ -28,7 +35,7 @@ export default class Posts extends Model {
     const requestList: any = []
     let files = await fse.readdir(this.postDir)
 
-    files = files.filter(junk.not)
+    files = files.filter(item => junk.not(item) && item.endsWith('.md'))
     files.forEach((item) => {
       requestList.push(fs.readFileSync(path.join(this.postDir, item), 'utf8'))
     })
@@ -158,9 +165,12 @@ ${postMatter.content}`
    * @param post
    */
   async savePostToFile(post: IPost): Promise<IPost | null> {
+    assertPostName(post.fileName)
+    if (post.deleteFileName) assertPostName(post.deleteFileName)
     const helper = new ContentHelper()
     const content = helper.changeImageUrlLocalToDomain(post.content, this.db.setting.domain)
     const extendName = (post.featureImage.name || 'jpg').split('.').pop()
+    if (!extendName || !/^[a-zA-Z0-9]+$/.test(extendName)) throw new Error('Invalid image extension')
 
     post.title = formatYamlString(post.title)
 
@@ -178,53 +188,43 @@ ${content}`
     try {
       // If exist feature image
       if (post.featureImage.path) {
-        const filePath = `${this.postImageDir}/${post.fileName}.${extendName}`
+        const filePath = assertDestination(this.appDir, `${this.postImageDir}/${post.fileName}.${extendName}`)
+        const source = assertImageAccess(post.featureImage.path, [this.appDir])
 
         if (post.featureImage.path !== filePath) {
-          fse.copySync(post.featureImage.path, filePath)
+          fse.copySync(source, filePath)
 
           // Clean the old file
-          if (post.featureImage.path.includes(this.postImageDir)) {
-            fse.removeSync(post.featureImage.path)
-          }
+          // Keep existing images: other articles may share this cover.
         }
       }
 
       // Write file must use fse, beause fs.writeFile need callback
-      await fse.writeFile(`${this.postDir}/${post.fileName}.md`, mdStr)
+      const target = assertDestination(this.appDir, path.join(this.postDir, `${post.fileName}.md`))
+      const temporary = path.join(this.postDir, `.${post.fileName}.${process.pid}.${Date.now()}.tmp`)
+      try {
+        await fse.writeFile(temporary, mdStr, { flag: 'wx' })
+        await fse.rename(temporary, target)
+      } finally { await fse.remove(temporary) }
 
       // Clean the old file
-      if (post.deleteFileName) {
+      if (post.deleteFileName && post.deleteFileName !== post.fileName) {
         fse.removeSync(`${this.postDir}/${post.deleteFileName}.md`)
       }
     } catch (e) {
       console.error('ERROR: ', e)
+      return null
     }
     return post
   }
 
   async deletePost(post: IPostDb) {
     try {
-      const postUrl = `${this.postDir}/${post.fileName}.md`
+      assertPostName(post.fileName)
+      const postUrl = assertDestination(this.appDir, `${this.postDir}/${post.fileName}.md`)
       fse.removeSync(postUrl)
 
-      // Clean feature image
-      if (post.data.feature) {
-        fse.removeSync(post.data.feature.replace('file://', ''))
-      }
-
-      // Clean post content image
-      const imageReg = /(!\[.*?\]\()(.+?)(\))/g
-      const imageList = post.content.match(imageReg)
-      if (imageList) {
-        const postImagePaths = imageList.map((item: string) => {
-          const index = item.indexOf('(')
-          return item.substring(index + 1, item.length - 1)
-        })
-        postImagePaths.forEach(async (filePath: string) => {
-          fse.removeSync(filePath.replace('file://', ''))
-        })
-      }
+      // Retain images: Markdown and covers can be shared by other articles.
       return true
     } catch (e) {
       console.error('Delete Error', e)
@@ -233,13 +233,15 @@ ${content}`
   }
 
   async uploadImages(files: any[]) {
+    assertDestination(this.appDir, this.postImageDir)
     await fse.ensureDir(this.postImageDir)
     const results = []
     for (const file of files) {
-      const extendName = file.name.split('.').pop()
-      const newFileName = new Date().getTime()
+      const extendName = path.extname(file.name).slice(1)
+      if (!/^[a-zA-Z0-9]+$/.test(extendName)) throw new Error('Invalid image extension')
+      const newFileName = `${Date.now()}-${require('crypto').randomBytes(6).toString('hex')}`
       const filePath = `${this.postImageDir}/${newFileName}.${extendName}`
-      fse.copySync(file.path, filePath)
+      fse.copySync(assertImageAccess(file.path, [this.appDir]), assertDestination(this.appDir, filePath))
       results.push(filePath)
     }
     return results

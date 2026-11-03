@@ -16,7 +16,8 @@
 </template>
 
 <script lang="ts">
-import { ipcRenderer, IpcRendererEvent, shell } from 'electron'
+import shell from '@/helpers/renderer-link'
+import { ipcRenderer, IpcRendererEvent, } from '@/helpers/renderer-bridge'
 import Vue from 'vue'
 import Component from 'vue-class-component'
 import { State } from 'vuex-class'

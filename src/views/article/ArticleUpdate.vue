@@ -2,8 +2,8 @@
   <div class="article-update-page" :class="{ 'is-entering': entering }" v-if="visible" @mousemove="handlePageMousemove">
     <div class="page-title" ref="pageTitle">
       <a-row type="flex" justify="end">
-        <a-tooltip placement="bottom" :title="$t('back')">
-          <div class="op-btn" tabindex="0" @click="close">
+        <a-tooltip placement="bottom" :title="String($t('back'))">
+          <div class="op-btn" role="button" :aria-label="String($t('back'))" tabindex="0" @keydown.enter="close" @click="close">
             <i class="zwicon-arrow-left"></i>
           </div>
         </a-tooltip>
@@ -113,15 +113,12 @@
         :visible="previewVisible"
         @close="previewVisible = false"
         width="800"
-        :wrapStyle="{
-          height: 'calc(100% - 108px)',
-          overflow: 'auto',
-          paddingBottom: '108px',
-          zIndex: 1025,
-        }"
+        :zIndex="3200"
+        wrapClassName="article-preview-drawer"
+        :bodyStyle="{ overflowY: 'auto' }"
         title=" "
       >
-        <img class="preview-feature-image" v-if="featureType === 'DEFAULT' && form.featureImage.path" :src="form.featureImage.path" alt="">
+        <img class="preview-feature-image" v-if="featureType === 'DEFAULT' && form.featureImage.path" :src="$localURL(form.featureImage.path)" alt="">
         <img class="preview-feature-image" v-if="featureType === 'EXTERNAL' && form.featureImagePath" :src="form.featureImagePath" alt="">
         <h1 class="preview-title">{{ form.title }}</h1>
         <div class="preview-date">{{ form.date.format(site.themeConfig.dateFormat) }}</div>
@@ -138,29 +135,31 @@
         :visible="postSettingsVisible"
         @close="postSettingsVisible = false"
         width="400"
-        :wrapStyle="{height: 'calc(100% - 108px)',overflow: 'auto',paddingBottom: '108px', zIndex: 1025}"
+        :zIndex="3200"
+        wrapClassName="article-settings-drawer"
+        :bodyStyle="{ overflowY: 'auto', padding: '24px' }"
       >
-        <a-collapse v-model="activeKey" class="post-settings" :bordered="false">
-          <a-collapse-panel header="URL" key="1">
+        <a-form layout="vertical" class="post-settings-form">
+          <details class="post-setting-group" open><summary>URL</summary><div class="post-setting-content">
             <a-input v-model="form.fileName" @change="handleFileNameChange"></a-input>
-          </a-collapse-panel>
-          <a-collapse-panel :header="$t('tag')" key="2">
+          </div></details>
+          <details class="post-setting-group"><summary>{{ $t('tag') }}</summary><div class="post-setting-content">
             <div>
               <a-select mode="tags" style="width: 100%" v-model="form.tags">
                 <a-select-option v-for="tag in tags" :key="tag" :value="tag">{{ tag }}</a-select-option>
               </a-select>
             </div>
-          </a-collapse-panel>
-          <a-collapse-panel :header="$t('createAt')" key="3">
+          </div></details>
+          <details class="post-setting-group"><summary>{{ $t('createAt') }}</summary><div class="post-setting-content">
             <a-date-picker
               showTime
               format="YYYY-MM-DD HH:mm:ss"
               v-model="form.date"
               style="width: 100%"
             />
-          </a-collapse-panel>
+          </div></details>
 
-          <a-collapse-panel :header="$t('featureImage')" key="4">
+          <details class="post-setting-group"><summary>{{ $t('featureImage') }}</summary><div class="post-setting-content">
             <a-radio-group style="margin-bottom: 16px;" defaultValue="a" buttonStyle="solid" v-model="featureType" size="small">
               <a-radio-button value="DEFAULT">{{$t('default')}}</a-radio-button>
               <a-radio-button value="EXTERNAL">{{$t('external')}}</a-radio-button>
@@ -174,14 +173,14 @@
                 :beforeUpload="beforeFeatureUpload"
               >
                 <div v-if="form.featureImage.path">
-                  <img class="feature-image" :src="`file://${form.featureImage.path}`" height="150" />
+                  <img class="feature-image" :src="$localURL(`file://${form.featureImage.path}`)" height="150" />
                 </div>
                 <div v-else>
                   <img src="@/assets/images/image_upload.svg" class="upload-img">
                   <i class="zwicon-upload upload-icon"></i>
                 </div>
               </a-upload>
-              <a-button v-if="form.featureImage.path" type="danger" block icon="delete" @click="form.featureImage = {}" />
+              <a-button v-if="form.featureImage.path" type="danger" block icon="delete" @click="form.featureImage = { path: '', name: '', type: '' }" />
             </div>
             <div v-if="featureType === 'EXTERNAL'">
               <a-input v-model="form.featureImagePath"></a-input>
@@ -190,14 +189,14 @@
                 <img class="feature-image" :src="form.featureImagePath" height="150">
               </div>
             </div>
-          </a-collapse-panel>
-          <a-collapse-panel :header="$t('hideInList')" key="5">
+          </div></details>
+          <details class="post-setting-group"><summary>{{ $t('hideInList') }}</summary><div class="post-setting-content">
             <a-switch v-model="form.hideInList"></a-switch>
-          </a-collapse-panel>
-          <a-collapse-panel :header="$t('topArticles')" key="6">
+          </div></details>
+          <details class="post-setting-group"><summary>{{ $t('topArticles') }}</summary><div class="post-setting-content">
             <a-switch v-model="form.isTop"></a-switch>
-          </a-collapse-panel>
-        </a-collapse>
+          </div></details>
+        </a-form>
       </a-drawer>
 
       <!-- 编辑器点击图片上传用 -->
@@ -209,23 +208,25 @@
 </template>
 
 <script lang="ts">
+import shell from '@/helpers/renderer-link'
+import localFilePath, { localAssetURL } from '@/helpers/local-file'
+import previewHTML from '@/helpers/preview-html'
 import {
-  ipcRenderer, IpcRendererEvent, shell, clipboard, remote,
-} from 'electron'
+  ipcRenderer, IpcRendererEvent,
+} from '@/helpers/renderer-bridge'
 import {
   Vue, Component, Prop, Watch,
 } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 import shortid from 'shortid'
 import moment from 'moment'
-import * as fse from 'fs-extra'
 import * as monaco from 'monaco-editor'
-import Prism from 'prismjs'
+import Prism from '@/helpers/prism'
 import { wordCount, timeCalc } from '../../helpers/words-count'
-import markdown from '../../server/plugins/markdown'
+import { markdown } from '@/helpers/renderer-bridge'
 import MonacoMarkdownEditor from '../../components/MonacoMarkdownEditor/Index.vue'
 import EmojiCard from '../../components/EmojiCard/Index.vue'
-import slug from '../../helpers/slug'
+import { createSlug as slug } from '@/helpers/renderer-bridge'
 import { IPost } from '../../interfaces/post'
 import { Site } from '../../store/modules/site'
 import { UrlFormats } from '../../helpers/enums'
@@ -286,7 +287,6 @@ export default class ArticleUpdate extends Vue {
 
   featureType: 'DEFAULT' | 'EXTERNAL' = 'DEFAULT'
 
-  activeKey = ['1']
 
   postStatusTip = ''
 
@@ -379,7 +379,7 @@ export default class ArticleUpdate extends Vue {
     if (file && isImage) {
       this.form.featureImage = {
         name: file.name,
-        path: file.path,
+        path: localFilePath(file),
         type: file.type,
       }
     }
@@ -467,12 +467,12 @@ export default class ArticleUpdate extends Vue {
     this.buildFileName()
     const valid = this.checkArticleUrlValid()
     if (!valid) {
-      this.$message.error(this.$t('postUrlRepeatTip'))
+      this.$message.error(String(this.$t('postUrlRepeatTip')))
       return
     }
 
     if (this.form.fileName.includes('/')) {
-      this.$message.error(this.$t('postUrlIncludeTip'))
+      this.$message.error(String(this.$t('postUrlIncludeTip')))
       return
     }
 
@@ -506,6 +506,10 @@ export default class ArticleUpdate extends Vue {
 
     ipcRenderer.send('app-post-create', form)
     ipcRenderer.once('app-post-created', (event: IpcRendererEvent, data: any) => {
+      if (!data) {
+        this.$message.error('保存失败，请检查文件权限和文章 URL 后重试。')
+        return
+      }
       this.updatePostSavedStatus()
       this.$message.success(`🎉  ${this.$t('draftSuccess')}`)
       this.$emit('fetchData')
@@ -520,6 +524,10 @@ export default class ArticleUpdate extends Vue {
 
     ipcRenderer.send('app-post-create', form)
     ipcRenderer.once('app-post-created', (event: IpcRendererEvent, data: any) => {
+      if (!data) {
+        this.$message.error('保存失败，请检查文件权限和文章 URL 后重试。')
+        return
+      }
       this.updatePostSavedStatus()
       this.$message.success(`🎉  ${this.$t('saveSuccess')}`)
       this.$emit('fetchData')
@@ -534,6 +542,10 @@ export default class ArticleUpdate extends Vue {
 
     ipcRenderer.send('app-post-create', form)
     ipcRenderer.once('app-post-created', (event: IpcRendererEvent, data: any) => {
+      if (!data) {
+        this.$message.error('保存失败，请检查文件权限和文章 URL 后重试。')
+        return
+      }
       this.updatePostSavedStatus()
       this.$emit('fetchData')
     })
@@ -561,8 +573,9 @@ export default class ArticleUpdate extends Vue {
   uploadImageFiles(files: any[]) {
     ipcRenderer.send('image-upload', files)
     ipcRenderer.once('image-uploaded', (event: IpcRendererEvent, data: any) => {
+      if (!Array.isArray(data)) { this.$message.error('图片导入失败，请检查原文件后重试。'); return }
       for (const path of data) {
-        let url = `![](file://${path})`
+        let url = `![](${encodeURI(`file://${path.replace(/\\/g, '/')}`)})`
         url = url.replace(/\\/g, '/')
 
         this.$refs.monacoMarkdownEditor.editor.getModel().applyEdits([{
@@ -592,7 +605,10 @@ export default class ArticleUpdate extends Vue {
   previewPost() {
     this.previewVisible = true
     setTimeout(() => {
-      this.$refs.previewContainer.innerHTML = markdown.render(this.form.content)
+      this.$refs.previewContainer.innerHTML = previewHTML(markdown.render(this.form.content))
+      this.$refs.previewContainer.querySelectorAll('img').forEach(image => {
+        image.src = localAssetURL(image.getAttribute('src') || '')
+      })
       Prism.highlightAll()
     }, 1)
 
@@ -623,7 +639,7 @@ export default class ArticleUpdate extends Vue {
       this.uploadImageFiles([
         {
           name: file.name,
-          path: file.path,
+          path: localFilePath(file),
           type: file.type,
         },
       ])
@@ -664,9 +680,6 @@ export default class ArticleUpdate extends Vue {
   width: 100%
 }
 
-/deep/ .ant-modal-content {
-  height: 100%;
-}
 
 /deep/ .ant-collapse {
   background: #F7F6F3;

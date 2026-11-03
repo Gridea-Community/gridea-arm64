@@ -1,4 +1,5 @@
-import { ipcMain, IpcMainEvent } from 'electron'
+import { IpcMainEvent } from 'electron'
+import ipcMain from '../../helpers/trusted-ipc'
 import Renderer from '../renderer'
 
 export default class RendererEvents {

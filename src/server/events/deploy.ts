@@ -1,4 +1,5 @@
-import { ipcMain, IpcMainEvent } from 'electron'
+import { IpcMainEvent } from 'electron'
+import ipcMain from '../../helpers/trusted-ipc'
 import Deploy from '../deploy'
 import Renderer from '../renderer'
 import SftpDeploy from '../plugins/deploys/sftp'

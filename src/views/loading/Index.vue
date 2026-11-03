@@ -5,7 +5,7 @@
   </div>
 </template>
 
-<script>
+<script lang="ts">
 import { Vue, Component } from 'vue-property-decorator'
 
 @Component({
@@ -15,7 +15,7 @@ export default class Loading extends Vue {
   mounted() {
     setTimeout(() => {
       const { redirect } = this.$route.query
-      this.$router.push(redirect)
+      this.$router.push(typeof redirect === 'string' ? redirect : '/articles')
     }, 1000)
   }
 }

@@ -1,0 +1,58 @@
+--- a/dist/compiler-sfc.js
++++ b/dist/compiler-sfc.js
+@@ -479,23 +479,22 @@
+         else {
+             let endTagLength = 0;
+             const stackedTag = lastTag.toLowerCase();
+-            const reStackedTag = reCache[stackedTag] ||
+-                (reCache[stackedTag] = new RegExp('([\\s\\S]*?)(</' + stackedTag + '[^>]*>)', 'i'));
+-            const rest = html.replace(reStackedTag, function (all, text, endTag) {
+-                endTagLength = endTag.length;
++            // Search for a fixed closing-tag prefix, then scan once for its end.
++            // Avoid a wildcard regex that retries every possible starting position.
++            const rawClose = html.match(new RegExp('</' + stackedTag, 'i'));
++            const rawStart = rawClose ? rawClose.index : -1;
++            const rawEnd = rawStart < 0 ? -1 : html.indexOf('>', rawStart + stackedTag.length + 2);
++            let rest = html;
++            if (rawEnd >= 0) {
++                endTagLength = rawEnd + 1 - rawStart;
++                let text = html.slice(0, rawStart);
+                 if (!isPlainTextElement(stackedTag) && stackedTag !== 'noscript') {
+-                    text = text
+-                        .replace(/<!\--([\s\S]*?)-->/g, '$1') // #7298
+-                        .replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1');
++                    text = text.replace(/<!\--([\s\S]*?)-->/g, '$1').replace(/<!\[CDATA\[([\s\S]*?)]]>/g, '$1');
+                 }
+-                if (shouldIgnoreFirstNewline(stackedTag, text)) {
+-                    text = text.slice(1);
+-                }
+-                if (options.chars) {
+-                    options.chars(text);
+-                }
+-                return '';
+-            });
++                if (shouldIgnoreFirstNewline(stackedTag, text)) text = text.slice(1);
++                if (options.chars) options.chars(text);
++                rest = html.slice(rawEnd + 1);
++            }
+             index += html.length - rest.length;
+             html = rest;
+             parseEndTag(stackedTag, index - endTagLength, index);
+@@ -6976,7 +6975,7 @@
+ let platformGetTagNamespace;
+ let maybeComponent;
+ function createASTElement(tag, attrs, parent) {
+-    return {
++    return Object.assign(Object.create(null), {
+         type: 1,
+         tag,
+         attrsList: attrs,
+@@ -6984,7 +6983,7 @@
+         rawAttrsMap: {},
+         parent,
+         children: []
+-    };
++    });
+ }
+ /**
+  * Convert HTML string to AST.

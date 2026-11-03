@@ -1,3 +1,4 @@
+import errorMessage from '../../../helpers/error-message'
 import fs from 'fs'
 import path from 'path'
 import axios from 'axios'
@@ -111,7 +112,7 @@ export default class NetlifyApi extends Model {
       return result
     } catch (e) {
       result.success = false
-      result.message = `[Server] 同步失败： ${e.message}`
+      result.message = `[Server] 同步失败： ${errorMessage(e)}`
     }
   }
 

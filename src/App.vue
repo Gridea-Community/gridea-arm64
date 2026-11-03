@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-import { shell } from 'electron'
+import shell from '@/helpers/renderer-link'
 import Vue from 'vue'
 import Component from 'vue-class-component'
 

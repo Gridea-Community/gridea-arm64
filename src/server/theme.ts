@@ -2,6 +2,8 @@ import * as path from 'path'
 import * as fse from 'fs-extra'
 import junk from 'junk'
 import Model from './model'
+import { assertImageAccess, assertDestination } from '../helpers/file-access'
+import { atomicWrite } from '../helpers/atomic-file'
 import { ITheme } from './interfaces/theme'
 
 export default class Theme extends Model {
@@ -18,6 +20,12 @@ export default class Theme extends Model {
     this.themeDir = path.join(this.appDir, 'themes')
     this.themeConfig = {}
     this.themeList = []
+  }
+
+  private validateThemeName(name: string) {
+    if (typeof name !== 'string' || !name || name === '.' || name === '..' || /[\\/\x00-\x1f]/.test(name)) throw new Error('Invalid theme folder')
+    const folder = assertDestination(this.appDir, path.join(this.themeDir, name))
+    if (!fse.statSync(folder).isDirectory()) throw new Error('Missing theme folder')
   }
 
   /**
@@ -61,17 +69,15 @@ export default class Theme extends Model {
    * Save the theme configuration
    */
   public async saveThemeConfig(themeConfig: ITheme) {
-    await this.$theme.set('config', themeConfig).write()
-
-    // If there is a backup of the custom configuration, copy the backup to the custom configuration
-    const themeConfigBackupPath = path.join(this.appDir, 'config', `theme.${themeConfig.themeName}.config.json`)
-    const existThemeConfigBackupFile = await fse.pathExists(themeConfigBackupPath)
-    if (existThemeConfigBackupFile) {
-      const config = fse.readJSONSync(themeConfigBackupPath)
-      await this.$theme.set('customConfig', config).write()
-    } else {
-      await this.$theme.set('customConfig', {}).write()
+    this.validateThemeName(themeConfig.themeName)
+    const previousName = this.$theme.get('config.themeName').value()
+    let customConfig = this.$theme.get('customConfig').value() || {}
+    if (previousName !== themeConfig.themeName) {
+      const backup = assertDestination(this.appDir, path.join(this.appDir, 'config', `theme.${themeConfig.themeName}.config.json`))
+      customConfig = fse.pathExistsSync(backup) ? fse.readJSONSync(backup) : {}
     }
+    // Commit theme selection and its custom settings together; basic edits keep the current custom settings.
+    await this.$theme.set('config', themeConfig).set('customConfig', customConfig).write()
     return themeConfig
   }
 
@@ -79,10 +85,10 @@ export default class Theme extends Model {
    * Save the theme custom configuration
    */
   public async saveThemeCustomConfig(config: any) {
+    this.validateThemeName(this.db.themeConfig.themeName)
     if (Object.keys(config).length > 0) {
       // Save the picture type configuration
       const toPath = path.join(this.appDir, 'themes', this.db.themeConfig.themeName, 'assets', 'media', 'images')
-      const includedArrayTypeImages: string[] = []
   
       for (const configItem of this.db.currentThemeConfig) {
         const configValue = config[configItem.name]
@@ -97,24 +103,17 @@ export default class Theme extends Model {
             const extendName = configValue.split('.').pop()
             const fileName = `custom-${configItem.name}.${extendName}`
   
-            fse.ensureDirSync(toPath)
-            fse.copySync(configValue, path.join(toPath, fileName))
+            fse.ensureDirSync(assertDestination(this.appDir, toPath))
+            fse.copySync(assertImageAccess(configValue, [this.appDir]), assertDestination(this.appDir, path.join(toPath, fileName)))
   
             // Change value to finally value
             config[configItem.name] = path.join('/', 'media', 'images', fileName)
-          } else if (typeof configValue === 'undefined' || configValue === configItem.value) {
-            const currentConfigValue = this.db.themeCustomConfig[configItem.name]
-            if (currentConfigValue && currentConfigValue !== configItem.value) {
-              const extendName = this.db.themeCustomConfig[configItem.name].split('.').pop()
-              const fileName = `custom-${configItem.name}.${extendName}`
-    
-              fse.removeSync(path.join(toPath, fileName))
-            }
           }
+          // Retain previous files until configuration persistence succeeds; images can be shared.
         }
   
         // Array config type data need to find image config to upload folder
-        if (configItem.type === 'array') {
+        if (configItem.type === 'array' && Array.isArray(configValue)) {
           for (let arrItemIndex = 0; arrItemIndex < configValue.length; arrItemIndex += 1) {
             const foundConfigItem = this.db.currentThemeConfig.find((i: any) => i.name === configItem.name)
             const arrayItemKeys = Object.keys(configValue[arrItemIndex])
@@ -134,16 +133,15 @@ export default class Theme extends Model {
                   const extendName = fieldValue.split('.').pop()
                   const fileName = `custom-array-${configItem.name}-${new Date().getTime()}-${key}.${extendName}`
     
-                  fse.ensureDirSync(toPath)
-                  fse.copySync(fieldValue, path.join(toPath, fileName))
+                  fse.ensureDirSync(assertDestination(this.appDir, toPath))
+                  fse.copySync(assertImageAccess(fieldValue, [this.appDir]), assertDestination(this.appDir, path.join(toPath, fileName)))
     
                   // Change value to finally value
                   configValue[arrItemIndex][key] = path.join('/', 'media', 'images', fileName)
-                  includedArrayTypeImages.push(configValue[arrItemIndex][key])
                 } else if (typeof fieldValue === 'undefined' || fieldValue === foundPictureTypeField.value) {
                   console.log('run...')
                 } else {
-                  includedArrayTypeImages.push(fieldValue)
+                  // Existing theme image reference is retained.
                 }
               }
             }
@@ -151,22 +149,8 @@ export default class Theme extends Model {
         }
       }
   
-      // Remove unused array type config images
-      const assetsFolderPath = path.join(this.appDir, 'themes', this.db.themeConfig.themeName, 'assets')
-      const imagesFolderPath = path.join(assetsFolderPath, 'media', 'images')
-      if (fse.existsSync(imagesFolderPath)) {
-        const files = await fse.readdirSync(imagesFolderPath, { withFileTypes: true })
-        const arrayTypeImages = files
-          .filter(item => !item.isDirectory())
-          .map(item => path.join('/', 'media', 'images', item.name))
-          .filter(item => item.includes('custom-array'))
-    
-        arrayTypeImages.forEach((name: string) => {
-          if (!includedArrayTypeImages.includes(name)) {
-            fse.removeSync(path.join(assetsFolderPath, name))
-          }
-        })
-      }
+      // Image cleanup is explicit; saving/resetting settings must not destroy existing files.
+
     }
 
 
@@ -174,7 +158,7 @@ export default class Theme extends Model {
 
     // Backup theme custom config
     const themeConfigBackupPath = path.join(this.appDir, 'config', `theme.${this.db.themeConfig.themeName}.config.json`)
-    fse.writeJSONSync(themeConfigBackupPath, config)
+    atomicWrite(assertDestination(this.appDir, themeConfigBackupPath), JSON.stringify(config, null, 2))
     return config
   }
 

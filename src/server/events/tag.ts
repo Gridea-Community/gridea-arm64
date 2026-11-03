@@ -1,4 +1,5 @@
-import { ipcMain, IpcMainEvent } from 'electron'
+import { IpcMainEvent } from 'electron'
+import ipcMain from '../../helpers/trusted-ipc'
 import Tags from '../tags'
 import { ITag } from '../interfaces/tag'
 

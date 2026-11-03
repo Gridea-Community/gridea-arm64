@@ -49,7 +49,7 @@ export default class Renderer extends Model {
   }
 
   async preview() {
-    this.db.themeConfig.domain = `http://localhost:${this.previewPort}`
+    this.db.themeConfig.domain = `http://127.0.0.1:${this.previewPort}`
     await this.renderAll()
   }
 
@@ -506,33 +506,16 @@ export default class Renderer extends Model {
     fse.ensureDirSync(cssFolderPath)
 
     const lessString = fs.readFileSync(lessFilePath, 'utf8')
-    return new Promise((resolve, reject) => {
-      less.render(lessString, { filename: lessFilePath }, async (err: any, cssString: Less.RenderOutput) => {
-        if (err) {
-          console.log(err)
-          reject(err)
-        }
-        let { css } = cssString
-  
-        // if have override
-        const customConfig = this.db.themeCustomConfig
-        const currentThemePath = urlJoin(this.appDir, 'themes', this.db.themeConfig.themeName)
-  
-        const styleOverridePath = urlJoin(currentThemePath, 'style-override.js')
-        const existOverrideFile = await fse.pathExists(styleOverridePath)
-        if (existOverrideFile) {
-          // clean cache
-          delete __non_webpack_require__.cache[__non_webpack_require__.resolve(styleOverridePath)]
-  
-          const generateOverride = __non_webpack_require__(styleOverridePath)
-          const customCss = generateOverride(customConfig)
-          css += customCss
-        }
-  
-        fs.writeFileSync(urlJoin(cssFolderPath, 'main.css'), css)
-        resolve(true)
-      })
-    })
+    const output = await less.render(lessString, { filename: lessFilePath })
+    let { css } = output
+    const styleOverridePath = urlJoin(this.themePath, 'style-override.js')
+    if (await fse.pathExists(styleOverridePath)) {
+      delete __non_webpack_require__.cache[__non_webpack_require__.resolve(styleOverridePath)]
+      const generateOverride = __non_webpack_require__(styleOverridePath)
+      css += generateOverride(this.db.themeCustomConfig)
+    }
+    await fse.writeFile(urlJoin(cssFolderPath, 'main.css'), css)
+    return true
   }
 
   /**

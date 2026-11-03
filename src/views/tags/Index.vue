@@ -52,11 +52,11 @@
 </template>
 
 <script lang="ts">
-import { ipcRenderer, IpcRendererEvent } from 'electron'
+import { ipcRenderer, IpcRendererEvent } from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 import shortid from 'shortid'
-import slug from '../../helpers/slug'
+import { createSlug as slug } from '@/helpers/renderer-bridge'
 import { Site } from '../../store/modules/site'
 import { UrlFormats } from '../../helpers/enums'
 import { ITag } from '../../interfaces/tag'
@@ -205,7 +205,7 @@ export default class Tags extends Vue {
   transition: all 0.3s;
   &:hover {
     // box-shadow: 0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -1px rgba(0,0,0,.06)!important;
-    @apply shadow-lg;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
   }
   .tag {
     font-size: 12px;

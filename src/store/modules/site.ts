@@ -17,7 +17,7 @@ export interface Site {
   themeConfig: ITheme
   themeCustomConfig: any
   currentThemeConfig: any
-  themes: string[]
+  themes: { folder: string; name: string; version?: string; repository?: string }[]
   setting: ISetting
   commentSetting: ICommentSetting
 }

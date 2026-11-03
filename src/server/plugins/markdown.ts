@@ -10,12 +10,14 @@ import MarkdownItFootnote from 'markdown-it-footnote'
 import MarkdownItImsize from 'markdown-it-imsize'
 import MarkdownItEmoji from 'markdown-it-emoji'
 import MarkdownItImplicitFigures from 'markdown-it-implicit-figures'
-import MarkdownItImageLazyLoading from 'markdown-it-image-lazy-loading'
 
 const markdownIt = new MarkdownIt({
   html: true,
   breaks: true,
 })
+
+// Compatibility for legacy plugins on markdown-it 15.
+;(markdownIt.utils as any).assign = Object.assign
 
 const BAD_PROTO_RE = /^(vbscript|javascript|data):/
 const GOOD_DATA_RE = /^data:image\/(gif|png|jpeg|webp);/
@@ -47,6 +49,11 @@ markdownIt.use(MarkdownItImplicitFigures, {
   tabindex: true, // <figure tabindex="1+n">..., default: false
   link: false, // <a href="img.png"><img src="img.png"></a>, default: false
 })
-markdownIt.use(MarkdownItImageLazyLoading)
+// Only native lazy loading is needed. Do not ship an unused binary image parser.
+const renderImage = markdownIt.renderer.rules.image!
+markdownIt.renderer.rules.image = (tokens, index, options, env, self) => {
+  tokens[index].attrSet('loading', 'lazy')
+  return renderImage(tokens, index, options, env, self)
+}
 
 export default markdownIt

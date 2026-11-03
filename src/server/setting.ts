@@ -1,6 +1,7 @@
 import * as fse from 'fs-extra'
 import * as path from 'path'
 import Model from './model'
+import { assertImageAccess, assertDestination } from '../helpers/file-access'
 import { ICommentSetting } from './interfaces/setting'
 import { ISetting } from '../interfaces/setting'
 
@@ -32,11 +33,14 @@ export default class Setting extends Model {
 
   async uploadFavicon(filePath: string) {
     const faviconPath = path.join(this.appDir, 'favicon.ico')
-    fse.copySync(filePath, faviconPath)
+    fse.copySync(assertImageAccess(filePath, [this.appDir]), assertDestination(this.appDir, faviconPath))
+    return true
   }
 
   async uploadAvatar(filePath: string) {
     const avatarPath = path.join(this.appDir, 'images/avatar.png')
-    fse.copySync(filePath, avatarPath)
+    fse.ensureDirSync(assertDestination(this.appDir, path.dirname(avatarPath)))
+    fse.copySync(assertImageAccess(filePath, [this.appDir]), assertDestination(this.appDir, avatarPath))
+    return true
   }
 }

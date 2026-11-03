@@ -33,6 +33,7 @@
         <div
           class="post-container flex mb-2 relative cursor-pointer transition-fast hover:bg-gray-100 overflow-hidden"
           v-for="post in currentPostList" :key="post.fileName"
+          :class="{ 'is-selected': selectedPost.includes(post) }"
           @click="editPost(post)"
         >
           <div class="p-4 flex-1 flex">
@@ -64,7 +65,7 @@
             </div>
           </div>
 
-          <img v-if="post.data.feature" :src="post.data.feature" class="feature-img" />
+          <img v-if="post.data.feature" :src="$localURL(post.data.feature)" class="feature-img" />
 
           <div class="absolute right-0 top-0 -mt-px -mr-px flex">
             <div v-if="post.data.hideInList" class="text-xs flex items-center px-2 rounded-b rounded-br-none bg-gray-800 text-white">
@@ -99,7 +100,7 @@
 </template>
 
 <script lang="ts">
-import { ipcRenderer, IpcRendererEvent } from 'electron'
+import { ipcRenderer, IpcRendererEvent } from '@/helpers/renderer-bridge'
 import { Vue, Component, Watch } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 import { FadeTransition } from 'vue2-transitions'
@@ -189,7 +190,7 @@ export default class Articles extends Vue {
         ipcRenderer.send('app-post-delete', post)
         ipcRenderer.once('app-post-deleted', (event: IpcRendererEvent, data: any) => {
           if (data) {
-            this.$message.success(this.$t('articleDelete'))
+            this.$message.success(String(this.$t('articleDelete')))
             this.$bus.$emit('site-reload')
           }
         })

@@ -8,7 +8,7 @@
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator'
-import * as pkg from '../../../../package.json'
+import pkg from '../../../../package.json'
 
 @Component
 export default class System extends Vue {

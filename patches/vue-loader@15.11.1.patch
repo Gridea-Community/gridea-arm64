@@ -1,0 +1,14 @@
+diff --git a/lib/codegen/styleInjection.js b/lib/codegen/styleInjection.js
+--- a/lib/codegen/styleInjection.js
++++ b/lib/codegen/styleInjection.js
+@@ -95,7 +95,9 @@ module.exports = function genStyleInjectionCode(
+       // do not generate requests for empty styles
+       if (isNotEmptyStyle(style)) {
+         const request = genStyleRequest(style, i)
+-        styleImportsCode += `import style${i} from ${request}\n`
++        styleImportsCode += style.module
++          ? `import style${i} from ${request}\n`
++          : `import ${request}\n`
+         if (style.module) genCSSModulesCode(style, request, i)
+       }
+     })

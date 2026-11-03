@@ -1,4 +1,5 @@
-import { ipcMain, IpcMainEvent } from 'electron'
+import { IpcMainEvent } from 'electron'
+import ipcMain from '../../helpers/trusted-ipc'
 import Setting from '../setting'
 import { ICommentSetting } from '../interfaces/setting'
 import { ISetting } from '../../interfaces/setting'
@@ -17,25 +18,33 @@ export default class SettingEvents {
     ipcMain.removeAllListeners('avatar-uploaded')
 
     ipcMain.on('setting-save', async (event: IpcMainEvent, setting: ISetting) => {
-      const data = await settingInstance.saveSetting(setting)
-      event.sender.send('setting-saved', data)
+      try {
+        const data = await settingInstance.saveSetting(setting)
+        event.sender.send('setting-saved', data)
+      } catch (_) { event.sender.send('setting-saved', false) }
     })
 
     ipcMain.on('comment-setting-save', async (event: IpcMainEvent, setting: ICommentSetting) => {
-      const data = await settingInstance.saveCommentSetting(setting)
-      event.sender.send('comment-setting-saved', data)
+      try {
+        const data = await settingInstance.saveCommentSetting(setting)
+        event.sender.send('comment-setting-saved', data)
+      } catch (_) { event.sender.send('comment-setting-saved', false) }
     })
 
     ipcMain.on('favicon-upload', async (event: IpcMainEvent, filePath: string) => {
       console.log('执行了上传图片', filePath)
-      const data = await settingInstance.uploadFavicon(filePath)
-      event.sender.send('favicon-uploaded', data)
+      try {
+        const data = await settingInstance.uploadFavicon(filePath)
+        event.sender.send('favicon-uploaded', data)
+      } catch (_) { event.sender.send('favicon-uploaded', false) }
     })
 
     ipcMain.on('avatar-upload', async (event: IpcMainEvent, filePath: string) => {
       console.log('执行了上传头像', filePath)
-      const data = await settingInstance.uploadAvatar(filePath)
-      event.sender.send('avatar-uploaded', data)
+      try {
+        const data = await settingInstance.uploadAvatar(filePath)
+        event.sender.send('avatar-uploaded', data)
+      } catch (_) { event.sender.send('avatar-uploaded', false) }
     })
   }
 }

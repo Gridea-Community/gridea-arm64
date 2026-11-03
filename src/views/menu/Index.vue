@@ -85,7 +85,7 @@
 </template>
 
 <script lang="ts">
-import { ipcRenderer, IpcRendererEvent } from 'electron'
+import { ipcRenderer, IpcRendererEvent } from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 import urlJoin from 'url-join'
@@ -189,7 +189,7 @@ export default class Menu extends Vue {
         this.menuList[this.form.index] = { ...this.form }
       }
       this.$bus.$emit('site-reload')
-      this.$message.success(this.$t('menuSuccess'))
+      this.$message.success(String(this.$t('menuSuccess')))
       this.visible = false
 
       ga.event('Menu', 'Menu - save', { evLabel: this.form.name })
@@ -210,7 +210,7 @@ export default class Menu extends Vue {
           this.menuList.splice(foundIndex, 1)
 
           this.$bus.$emit('site-reload')
-          this.$message.success(this.$t('menuDelete'))
+          this.$message.success(String(this.$t('menuDelete')))
           this.visible = false
         })
       },
@@ -221,7 +221,7 @@ export default class Menu extends Vue {
     ipcRenderer.send('menu-sort', this.menuList)
     ipcRenderer.once('menu-sorted', (event: IpcRendererEvent, result: any) => {
       this.$bus.$emit('site-reload')
-      this.$message.success(this.$t('menuSuccess'))
+      this.$message.success(String(this.$t('menuSuccess')))
       ga.event('Menu', 'Menu - sort', { evLabel: '' })
     })
   }

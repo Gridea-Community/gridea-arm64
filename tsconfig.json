@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es2019",
     "module": "esnext",
     "strict": true,
     "jsx": "preserve",
@@ -20,7 +20,9 @@
       "@/*": [
         "src/*"
       ],
-      "*": ["node_modules/*"]
+      "*": [
+        "node_modules/*"
+      ]
     },
     "lib": [
       "esnext",
@@ -39,5 +41,8 @@
   "exclude": [
     "node_modules",
     "node_modules/gray-matter/gray-matter.d.ts"
-  ]
+  ],
+  "vueCompilerOptions": {
+    "target": 2.7
+  }
 }

@@ -27,10 +27,11 @@
 </template>
 
 <script lang="ts">
-import { ipcRenderer, IpcRendererEvent } from 'electron'
+import localFilePath from '@/helpers/local-file'
+import { ipcRenderer, IpcRendererEvent } from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
 import { State } from 'vuex-class'
-import * as path from 'path'
+import { localAssetURL } from '@/helpers/local-file'
 import FooterBox from '../../../components/FooterBox/Index.vue'
 
 @Component({
@@ -46,7 +47,7 @@ export default class AvatarSetting extends Vue {
   avatarPath = ''
 
   mounted() {
-    this.avatarPath = path.join('file://', this.site.appDir, 'images', `avatar.png?a=${Math.random()}`)
+    this.avatarPath = localAssetURL(`file://${this.site.appDir}/images/avatar.png`)
   }
 
   beforeUpload(file: any) {
@@ -58,7 +59,7 @@ export default class AvatarSetting extends Vue {
       return
     }
     if (file && isImage) {
-      this.file = file
+      this.file = { name: file.name, path: localFilePath(file), type: file.type }
     }
     return false
   }
@@ -70,10 +71,11 @@ export default class AvatarSetting extends Vue {
     console.log('click avatar upload', this.file)
     ipcRenderer.send('avatar-upload', this.file.path)
     ipcRenderer.once('avatar-uploaded', (event: IpcRendererEvent, result: any) => {
+      if (!result) { this.$message.error(String(this.$t('saveError'))); return }
       this.file = null
       this.$bus.$emit('site-reload')
-      this.avatarPath = path.join('file://', this.site.appDir, 'images', `avatar.png?a=${Math.random()}`)
-      this.$message.success(this.$t('avatarSettingSuccess'))
+      this.avatarPath = localAssetURL(`file://${this.site.appDir}/images/avatar.png?v=${Date.now()}`)
+      this.$message.success(String(this.$t('avatarSettingSuccess')))
     })
   }
 }

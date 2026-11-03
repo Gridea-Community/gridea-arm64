@@ -17,7 +17,7 @@ import packData from 'v-emoji-picker/data/emojis.json'
   },
 })
 export default class EmojiCard extends Vue {
-  pack = packData
+  pack = Array.isArray(packData) ? packData : (packData as any).data
 
   handleSelect(emojiData: any) {
     this.$emit('select', emojiData.emoji)

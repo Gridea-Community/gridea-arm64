@@ -16,8 +16,8 @@
 
 <script lang="ts">
 import {
-  ipcRenderer, IpcRendererEvent, remote,
-} from 'electron'
+  ipcRenderer, IpcRendererEvent,
+} from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
 import { State } from 'vuex-class'
 
@@ -40,20 +40,17 @@ export default class System extends Vue {
     ipcRenderer.send('app-source-folder-setting', this.currentFolderPath)
     ipcRenderer.once('app-source-folder-set', (event: IpcRendererEvent, data: any) => {
       if (data) {
-        this.$message.success(this.$t('saved'))
+        this.$message.success(String(this.$t('saved')))
         this.$bus.$emit('site-reload')
-        remote.app.relaunch()
-        remote.app.quit()
+        ipcRenderer.send('app-relaunch')
       } else {
-        this.$message.error(this.$t('saveError'))
+        this.$message.error(String(this.$t('saveError')))
       }
     })
   }
 
   async handleFolderSelect() {
-    const res = await remote.dialog.showOpenDialog({
-      properties: ['openDirectory', 'createDirectory'],
-    })
+    const res = await ipcRenderer.invoke('app-select-folder')
     if (res.filePaths.length > 0) {
       this.currentFolderPath = res.filePaths[0].replace(/\\/g, '/')
     }
