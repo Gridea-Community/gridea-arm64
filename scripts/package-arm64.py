@@ -22,7 +22,7 @@ def copy(name,start,optional=False):
   raise
  if src in seen:return
  seen.add(src);target=dest/src.relative_to(root);target.parent.mkdir(exist_ok=True,parents=True)
- shutil.copytree(src,target,symlinks=True,ignore=shutil.ignore_patterns('node_modules','.git','test','tests','__tests__'),dirs_exist_ok=True)
+ shutil.copytree(src,target,symlinks=True,ignore=shutil.ignore_patterns('.DS_Store','node_modules','.git','test','tests','__tests__'),dirs_exist_ok=True)
  d=json.loads((src/'package.json').read_text());opts=d.get('optionalDependencies',{})
  for dep in d.get('dependencies',{}):copy(dep,src,dep in opts)
  for dep in opts:copy(dep,src,True)
