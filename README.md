@@ -4,7 +4,7 @@
 
 Gridea for ARM64 是原版 Gridea 的社区维护版本，可以在搭载 Apple 芯片的 Mac 上直接运行，无需 Rosetta。它基于 Electron，沿用原版的写作、主题和发布流程，支持浅色、深色和跟随系统三种外观。
 
-当前测试版基于 Gridea 0.9.3，内部构建号为 0.9.3.14。
+当前测试版基于 Gridea 0.9.3，内部构建号为 0.9.3.10。
 
 [下载测试版](https://github.com/Gridea-Community/gridea-arm64/releases) · [安装与备份说明](docs/INSTALL.md)
 

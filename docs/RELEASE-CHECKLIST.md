@@ -23,15 +23,16 @@ Validation reused an existing pinned dependency installation via a temporary sym
 
 ## Before a binary release
 
-Use `X.Y.Z-arm64.N.alpha` for local test builds, `X.Y.Z-arm64.N.beta` for GitHub previews, and `X.Y.Z-arm64.N` for stable releases. `X.Y.Z` is the upstream Gridea baseline and `N` is the ARM64 release sequence. If a channel needs multiple revisions, append two numeric identifiers, as in `X.Y.Z-arm64.N.alpha.Y.Z` or `X.Y.Z-arm64.N.beta.Y.Z`.
+Use `vX.Y.Z-arm64.N.alpha.Y` for numbered local test builds, `vX.Y.Z-arm64.N.beta.Y` for numbered GitHub previews, and `vX.Y.Z-arm64.N` for stable releases. `X.Y.Z` identifies the upstream Gridea version and `N` identifies the ARM64 release sequence. Increment `Y` for a new round in the same channel. For a small follow-up on the same round, append or increment `.Z`, for example `v0.9.3-arm64.1.alpha.2.1` after `v0.9.3-arm64.1.alpha.2`.
 
-Keep the full version in package.json. Prefix it with `v` in the app, Git tag and GitHub Release title. Name the ZIP `Gridea-for-ARM64-<version>.zip` using the package.json version and record the exact filename in `SHA256SUMS.txt`. Keep the macOS numeric build number separately.
+Use package.json as the source for the full version without the leading `v`. Prefix it with `v` in the app, current-build references in both READMEs, Git tags, and GitHub Release titles. Name the ZIP `Gridea-for-ARM64-<version>.zip` using the package.json version and record the exact filename in `SHA256SUMS.txt`. Verify these names against the built app and archive before delivery. Keep the numeric macOS bundle version fields separate, and preserve historical version references and upstream dependency versions.
 
 Write the Chinese and English notes in natural language. List the changes with Markdown `-` bullets in each language, then close with a short introduction to Gridea for ARM64 based on the previous release. Share both drafts with the maintainer for approval before publishing. Use GitHub’s pre-release setting to identify test builds.
 
 - Record the version and dependency audit for the exact release build.
 - Complete Developer ID/Hardened Runtime signing and notarization, or explicitly label the download as an unnotarized test build.
 - Verify clean install, upgrade/recovery, appearance and deployment paths with disposable test destinations.
+- Compare the bundled sample site with the upstream default files. The only bundled themes must be fly, notes, paper and simple. Inspect the finished archive for local site data, custom themes, local paths and credential files before uploading.
 - Publish application archives, checksums and installation notes separately from the source.
 
 The visible application name is Gridea for ARM64. The old preview data folder and bundle identifier remain deliberately compatible. The public repository is https://github.com/Gridea-Community/gridea-arm64. Binary releases are explicitly marked as pre-releases until broader acceptance is complete.
