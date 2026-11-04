@@ -1,6 +1,7 @@
 {
   "name": "gridea",
   "version": "0.9.3-arm64.2",
+  "productVersion": "0.9.3.2-arm64",
   "private": true,
   "description": "A static blog writing client. You can use it to record your life, mood, knowledge, notes and ideas...",
   "keywords": [
