@@ -4,7 +4,7 @@
 
 An unofficial Apple Silicon maintenance fork of [Gridea](https://github.com/getgridea/gridea). Built with Electron and runs natively on ARM64 without Rosetta. This is separate from the SwiftUI client and is not an upstream official release.
 
-Baseline: Gridea 0.9.3, internal build 0.9.3.8. **Pre-release software**, not a stable release.
+Baseline: Gridea 0.9.3, internal build 0.9.3.13. **Pre-release software**, not a stable release.
 
 [Download test builds](https://github.com/Gridea-Community/gridea-arm64/releases) · [Installation and backups](docs/INSTALL.md)
 

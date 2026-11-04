@@ -4,7 +4,7 @@
 
 基于 [Gridea](https://github.com/getgridea/gridea) 的第三方 Apple Silicon macOS 维护版本，采用 Electron，原生运行于 ARM64，无需 Rosetta。非上游官方发行版，也不是 SwiftUI 客户端。
 
-当前基线：Gridea 0.9.3，内部构建号 0.9.3.8。状态为测试版，尚未公开稳定发布。
+当前基线：Gridea 0.9.3，内部构建号 0.9.3.13。状态为测试版，尚未公开稳定发布。
 
 [下载测试版](https://github.com/Gridea-Community/gridea-arm64/releases) · [安装与备份说明](docs/INSTALL.md)
 
