@@ -49,7 +49,7 @@ export default class Renderer extends Model {
   }
 
   async preview() {
-    this.db.themeConfig.domain = `http://127.0.0.1:${this.previewPort}`
+    this.db.themeConfig.domain = `http://localhost:${this.previewPort}`
     await this.renderAll()
   }
 

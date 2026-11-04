@@ -41,8 +41,7 @@ export default class System extends Vue {
     ipcRenderer.once('app-source-folder-set', (event: IpcRendererEvent, data: any) => {
       if (data) {
         this.$message.success(String(this.$t('saved')))
-        this.$bus.$emit('site-reload')
-        ipcRenderer.send('app-relaunch')
+        ipcRenderer.send('app-refresh')
       } else {
         this.$message.error(String(this.$t('saveError')))
       }

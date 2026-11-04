@@ -254,7 +254,7 @@ export default class App extends Vue {
             })
           } else {
             this.$message.success(`🎉  ${this.$t('renderSuccess')}`)
-            this.openInBrowser(`http://127.0.0.1:${port}`)
+            this.openInBrowser(`http://localhost:${port}`)
           }
         },
       )

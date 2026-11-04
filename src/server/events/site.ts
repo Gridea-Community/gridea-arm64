@@ -15,7 +15,7 @@ export default class SiteEvents {
 
     ipcMain.on('app-site-reload', async (event: IpcMainEvent, params: any) => {
       const result = await appInstance.loadSite()
-      event.sender.send('app-site-loaded', result)
+      if (!event.sender.isDestroyed()) event.sender.send('app-site-loaded', result)
     })
 
     ipcMain.on('app-source-folder-setting', async (event: IpcMainEvent, params: string) => {

@@ -1,3 +1,4 @@
+import recordProcessFailure from './helpers/process-diagnostics'
 import { grantFolder } from './helpers/file-access'
 import editorPermission from './helpers/editor-permissions'
 import ipcMain, { setTrustedWindow } from './helpers/trusted-ipc'
@@ -23,7 +24,9 @@ ipcMain.handle('app-select-folder', async () => {
 })
 ipcMain.handle('app-open-external', (_event, url) => shell.openExternal(url))
 ipcMain.on('app-grant-image', (event, value) => { event.returnValue = grantImage(value) })
-ipcMain.on('app-relaunch', () => { app.relaunch(); app.quit() })
+ipcMain.on('app-refresh', () => {
+  if (!quitting && win && !win.isDestroyed()) win.webContents.reload()
+})
 
 // Allow smoke tests to use an isolated profile and sample blog.
 if (process.env.GRIDEA_TEST_HOME) {
@@ -36,10 +39,12 @@ const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let win: any
+let win: any = null
+let quitting = false
 const primaryInstance = app.requestSingleInstanceLock()
 if (!primaryInstance) app.quit()
 app.on('second-instance', () => {
+  if (!primaryInstance || quitting) return
   if (win && !win.isDestroyed()) {
     if (win.isMinimized()) win.restore()
     win.show()
@@ -57,6 +62,7 @@ protocol.registerSchemesAsPrivileged([
   { scheme: 'app-media', privileges: { secure: true, standard: true, supportFetchAPI: true } },
 ])
 function createWindow() {
+  if (!primaryInstance || quitting || (win && !win.isDestroyed())) return
   // Create the browser window.
   const winOption: any = {
     width: 1200,
@@ -87,6 +93,9 @@ function createWindow() {
   win.webContents.on('will-navigate', (event: any) => event.preventDefault())
   win.webContents.on('will-redirect', (event: any) => event.preventDefault())
   win.webContents.on('will-attach-webview', (event: any) => event.preventDefault())
+  win.webContents.on('render-process-gone', (_event: any, details: any) => {
+    recordProcessFailure(app.getPath('userData'), 'renderer', details)
+  })
   const contents = win.webContents
   contents.session.setPermissionRequestHandler((sender: any, permission: string, callback: any, details: any) => {
     callback(sender === contents && editorPermission(permission, details.requestingUrl, details.isMainFrame))
@@ -97,7 +106,7 @@ function createWindow() {
   win.setTitle('Gridea for ARM64')
   if (process.env.GRIDEA_TEST_HOME) {
     win.webContents.on('console-message', (_event: any, ...details: any[]) => console.log('Renderer:', ...details))
-    win.webContents.on('render-process-gone', (_event: any, details: any) => console.error('Renderer exit:', details))
+
   }
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
@@ -115,8 +124,9 @@ function createWindow() {
 
   }
 
+  const createdWindow = win
   win.on('closed', () => {
-    win = null
+    if (win === createdWindow) win = null
   })
 
   const locale: string = app.getLocale() || 'zh-CN'
@@ -184,8 +194,24 @@ function createWindow() {
 }
 
 // Quit when all windows are closed.
+function closePreviewServer() {
+  if (httpServer) {
+    httpServer.close()
+    httpServer = null
+  }
+}
+
+app.on('before-quit', () => {
+  quitting = true
+  closePreviewServer()
+})
+app.on('will-quit', closePreviewServer)
+app.on('child-process-gone', (_event: any, details: any) => {
+  recordProcessFailure(app.getPath('userData'), details.type || 'child', details)
+})
+
 app.on('window-all-closed', () => {
-  httpServer && httpServer.close()
+  closePreviewServer()
   // On macOS it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
@@ -194,7 +220,7 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-  if (!primaryInstance) return
+  if (!primaryInstance || quitting) return
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (win === null) {
@@ -206,7 +232,7 @@ app.on('activate', () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
-  if (!primaryInstance) return
+  if (!primaryInstance || quitting) return
   // if (isDevelopment && !process.env.IS_TEST) {
   //   // Install Vue Devtools
   //   await installVueDevtools()

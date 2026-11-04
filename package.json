@@ -1,6 +1,6 @@
 {
   "name": "gridea",
-  "version": "0.9.3-arm64.1",
+  "version": "0.9.3-arm64.2",
   "private": true,
   "description": "A static blog writing client. You can use it to record your life, mood, knowledge, notes and ideas...",
   "keywords": [
@@ -23,8 +23,9 @@
     "build:arm64": "node scripts/build-arm64.cjs",
     "test:security": "node scripts/test-security.cjs",
     "test:sites": "node scripts/patch-markdown.cjs && node scripts/smoke-sites.cjs",
-    "test": "node scripts/patch-markdown.cjs && node scripts/test-security.cjs && node scripts/test-preview-html.cjs && node scripts/test-preview-server.cjs && node scripts/test-post-storage.cjs && node scripts/test-file-access.cjs && node scripts/test-vue-compiler-security.cjs",
-    "test:build": "node scripts/test-build-gate.cjs"
+    "test": "node scripts/patch-markdown.cjs && node scripts/test-security.cjs && node scripts/test-preview-html.cjs && node scripts/test-preview-server.cjs && node scripts/test-post-storage.cjs && node scripts/test-file-access.cjs && node scripts/test-vue-compiler-security.cjs && node scripts/test-app-lifecycle.cjs && node scripts/test-editor-lifecycle.cjs",
+    "test:build": "node scripts/test-build-gate.cjs",
+    "test:lifecycle:runtime": "node scripts/test-electron-lifecycle.cjs"
   },
   "dependencies": {
     "@fontsource/noto-serif": "4.5.11",

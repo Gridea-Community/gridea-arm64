@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url'
 import markdown from './server/plugins/markdown'
 import slug from './helpers/slug'
 
-const sendChannels = new Set(['app-appearance', 'app-post-create', 'app-post-delete', 'app-post-list-delete', 'app-preview-server-port-get', 'app-relaunch', 'app-site-reload', 'app-source-folder-setting', 'avatar-upload', 'comment-setting-save', 'favicon-upload', 'html-render', 'image-upload', 'menu-delete', 'menu-save', 'menu-sort', 'remote-detect', 'setting-save', 'site-publish', 'tag-delete', 'tag-save', 'theme-custom-config-save', 'theme-save'])
+const sendChannels = new Set(['app-appearance', 'app-post-create', 'app-post-delete', 'app-post-list-delete', 'app-preview-server-port-get', 'app-refresh', 'app-site-reload', 'app-source-folder-setting', 'avatar-upload', 'comment-setting-save', 'favicon-upload', 'html-render', 'image-upload', 'menu-delete', 'menu-save', 'menu-sort', 'remote-detect', 'setting-save', 'site-publish', 'tag-delete', 'tag-save', 'theme-custom-config-save', 'theme-save'])
 const receiveChannels = new Set(['click-menu-save', 'log-error', 'app-post-created', 'app-post-deleted', 'app-post-list-deleted', 'app-preview-server-port-got', 'app-site-loaded', 'app-source-folder-set', 'avatar-uploaded', 'comment-setting-saved', 'favicon-uploaded', 'html-rendered', 'image-uploaded', 'menu-deleted', 'menu-saved', 'menu-sorted', 'remote-detected', 'setting-saved', 'site-published', 'tag-deleted', 'tag-saved', 'theme-custom-config-saved', 'theme-saved'])
 contextBridge.exposeInMainWorld('gridea', {
   locale: () => ipcRenderer.sendSync('app-locale'),

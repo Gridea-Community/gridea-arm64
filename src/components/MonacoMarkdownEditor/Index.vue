@@ -23,20 +23,26 @@ export default class MonacoMarkdownEditor extends Vue {
 
   editor: any = null
 
-  prevLineCount: number = -1
+  placeholderTimer: ReturnType<typeof setTimeout> | null = null
 
   updateAppearance() { monaco.editor.setTheme(document.documentElement.dataset.theme === 'dark' ? 'vs-dark' : 'GrideaLight') }
 
   beforeDestroy() {
     window.removeEventListener('gridea-appearance-changed', this.updateAppearance)
-    if (this.editor) this.editor.dispose()
+    if (this.placeholderTimer !== null) clearTimeout(this.placeholderTimer)
+    if (this.editor) {
+      const model = this.editor.getModel()
+      this.editor.dispose()
+      if (model) model.dispose()
+      this.editor = null
+    }
   }
 
   mounted() {
     monaco.editor.defineTheme('GrideaLight', theme as any)
     window.addEventListener('gridea-appearance-changed', this.updateAppearance)
 
-    this.editor = monaco.editor.create(document.getElementById('monaco-markdown-editor') as any, {
+    this.editor = monaco.editor.create(this.$el as HTMLElement, {
       language: 'markdown-math',
       value: this.value,
       fontSize: 15,
@@ -73,10 +79,10 @@ export default class MonacoMarkdownEditor extends Vue {
     const extension = new MonacoMarkdown.MonacoMarkdownExtension()
     extension.activate(this.editor)
 
-    setTimeout(this.setEditorHeight, 0)
+    this.schedulePlaceholderUpdate()
 
     this.editor.onDidChangeModelContent(() => {
-      setTimeout(this.setEditorHeight, 0)
+      this.schedulePlaceholderUpdate()
       const value = this.editor.getValue()
       if (this.value !== value) {
         this.$emit('change', value)
@@ -87,47 +93,19 @@ export default class MonacoMarkdownEditor extends Vue {
     })
   }
 
+  schedulePlaceholderUpdate() {
+    if (this.placeholderTimer !== null) clearTimeout(this.placeholderTimer)
+    this.placeholderTimer = setTimeout(() => {
+      this.placeholderTimer = null
+      this.setEditorHeight()
+    }, 0)
+  }
+
   setEditorHeight() {
-    // const { editor } = this
-    // if (!editor) return
-
-    // const editorDomNode = editor.getDomNode()
-    // if (!editorDomNode) return
-
-    // const LINE_HEIGHT = 26.25
-
-    // const container = editorDomNode.getElementsByClassName('view-lines')[0] as HTMLElement
-    // const containerHeight = container.offsetHeight
-    // const lineHeight = container.firstChild
-    //   ? (container.firstChild as HTMLElement).offsetHeight
-    //   : LINE_HEIGHT
-    
-    // if (!containerHeight) {
-    //   setTimeout(this.setEditorHeight, 0)
-    // } else {
-    //   const currLineCount = container.childElementCount
-    //   const nextHeight = (this.prevLineCount > currLineCount)
-    //     ? currLineCount * lineHeight
-    //     : containerHeight
-      
-    //   editorDomNode.style.height = `${nextHeight}px`
-    //   editor.layout()
-
-    //   if (container.childElementCount !== currLineCount) {
-    //     this.setEditorHeight()
-    //   } else {
-    //     this.prevLineCount = currLineCount
-    //   }
-    // }
-
-    const lines = document.querySelectorAll('.view-line') as any
-    if (lines) {
-      if (lines.length === 1 && !lines[0].innerText.trim()) {
-        lines[0].classList.add('input-holder')
-      } else if (lines[0].classList.contains('input-holder')) {
-        lines[0].classList.remove('input-holder')
-      }
-    }
+    if (!this.editor) return
+    const lines = this.$el.querySelectorAll('.view-line') as NodeListOf<HTMLElement>
+    if (!lines.length) return
+    lines[0].classList.toggle('input-holder', lines.length === 1 && !lines[0].innerText.trim())
   }
 
   @Watch('value')

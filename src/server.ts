@@ -30,7 +30,11 @@ export default function initServer() {
     app,
     close() {
       closed = true
-      if (server) server.close()
+      if (server) {
+        server.close()
+        // Stop connections owned by this preview server when closing or quitting.
+        if (server.closeAllConnections) server.closeAllConnections()
+      }
     },
   }
 }
