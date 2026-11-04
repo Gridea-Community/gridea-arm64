@@ -46,6 +46,7 @@ if (!primaryInstance) app.quit()
 app.on('second-instance', () => {
   if (!primaryInstance || quitting) return
   if (win && !win.isDestroyed()) {
+    if (!win.isVisible() && !win.isMinimized()) return
     if (win.isMinimized()) win.restore()
     win.show()
     win.focus()
@@ -65,6 +66,8 @@ function createWindow() {
   if (!primaryInstance || quitting || (win && !win.isDestroyed())) return
   // Create the browser window.
   const winOption: any = {
+    show: false,
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1c1c1e' : '#ffffff',
     width: 1200,
     height: 800,
     minHeight: 642,
@@ -84,7 +87,11 @@ function createWindow() {
     winOption.icon = `${__dirname}/app-icons/gridea.png`
   }
 
-  win = new BrowserWindow(winOption)
+  const createdWindow = new BrowserWindow(winOption)
+  win = createdWindow
+  createdWindow.once('ready-to-show', () => {
+    if (!quitting && win === createdWindow && !createdWindow.isDestroyed()) createdWindow.show()
+  })
   setTrustedWindow(win)
   win.webContents.setWindowOpenHandler(({ url }: { url: string }) => {
     shell.openExternal(url).catch(() => {})
@@ -124,7 +131,6 @@ function createWindow() {
 
   }
 
-  const createdWindow = win
   win.on('closed', () => {
     if (win === createdWindow) win = null
   })
@@ -237,7 +243,6 @@ app.on('ready', async () => {
   //   // Install Vue Devtools
   //   await installVueDevtools()
   // }
-  if (process.platform === 'darwin' && app.dock) app.dock.setIcon(`${__dirname}/app-icons/gridea.png`)
   createWindow()
 })
 

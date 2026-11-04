@@ -23,12 +23,11 @@ Validation reused an existing pinned dependency installation via a temporary sym
 
 ## Before a binary release
 
-Use `vX.Y.Z.N-arm64` for both the GitHub Release title and the Git tag. `X.Y.Z` is the upstream Gridea baseline. Start `N` at 1 for each baseline and increment it with each ARM64 release. Keep the macOS build number separately.
+Use `X.Y.Z-arm64.N` in package.json and in the app. `X.Y.Z` is the upstream Gridea baseline. Start `N` at 1 for each baseline and increment it with each ARM64 release. Keep the macOS build number separately.
 
-Name the download `Gridea-for-ARM64-X.Y.Z.N-arm64.zip`. Set package.json’s `productVersion` to `X.Y.Z.N-arm64` so the app displays the same version. Generate `SHA256SUMS.txt` using the filename GitHub displays.
+Use `vX.Y.Z-arm64.N` for both the Git tag and the GitHub Release title. Name the download `Gridea-for-ARM64-X.Y.Z-arm64.N.zip` and use that exact filename in `SHA256SUMS.txt`.
 
-Write the Chinese and English release notes in natural language. Focus on changes readers can see or use. Share both drafts with the maintainer and get their approval before publishing. The Release title contains only the version. Use GitHub’s pre-release setting to identify test builds.
-
+Write the Chinese and English notes in natural language. List the changes with Markdown `-` bullets in each language, then close with a short introduction to Gridea for ARM64 based on the previous release. Share both drafts with the maintainer for approval before publishing. Use GitHub’s pre-release setting to identify test builds.
 
 - Record the version and dependency audit for the exact release build.
 - Complete Developer ID/Hardened Runtime signing and notarization, or explicitly label the download as an unnotarized test build.

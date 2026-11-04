@@ -17,7 +17,7 @@ export default class System extends Vue {
     wrapper: { span: 12 },
   }
 
-  version = pkg.productVersion || pkg.version
+  version = pkg.version
 
   currentLanguage = 'zhHans'
 

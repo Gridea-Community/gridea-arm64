@@ -4,7 +4,7 @@
 
 Gridea for ARM64 is a community-maintained fork of Gridea for Apple Silicon Macs. It uses Electron, runs without Rosetta, keeps the familiar writing and publishing workflow, and lets you choose light mode, dark mode, or follow your Mac’s appearance.
 
-This preview is based on Gridea 0.9.3 and has an internal build number of 0.9.3.9.
+This preview is based on Gridea 0.9.3 and has an internal build number of 0.9.3.10.
 
 [Download test builds](https://github.com/Gridea-Community/gridea-arm64/releases) · [Installation and backups](docs/INSTALL.md)
 

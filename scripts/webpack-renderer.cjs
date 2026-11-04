@@ -16,7 +16,7 @@ module.exports = {
     { test: /\.vue$/, loader: 'vue-loader' },
     { test: /\.ts$/, exclude: /node_modules/, loader: 'ts-loader', options: { transpileOnly: true, appendTsSuffixTo: [/\.vue$/] } },
     { test: /\.css$/, use: styles },
-    { test: /\.less$/, use: [...styles, { loader: 'less-loader', options: { additionalData: `@import "${path.join(root, 'src/assets/styles/var.less').replace(/\\/g, '/')}";\n`, lessOptions: { javascriptEnabled: true, modifyVars: { 'btn-height-base': '30px', 'input-height-base': '30px' } } } }] },
+    { test: /\.less$/, use: [...styles, { loader: 'less-loader', options: { additionalData: `@import "${path.join(root, 'src/assets/styles/var.less').replace(/\\/g, '/')}";\n`, lessOptions: { javascriptEnabled: true, modifyVars: { 'primary-color': '@gridea-primary-color', 'btn-height-base': '30px', 'input-height-base': '30px' } } } }] },
     { test: /\.(png|jpe?g|gif|svg|ico|woff2?|eot|ttf|otf)$/i, type: 'asset/resource' },
   ] },
   plugins: [

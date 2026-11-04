@@ -3,8 +3,8 @@ function launch(primary = true) {
  const app = new EventEmitter(), commands = {}, windows = [], servers = []; let quits = 0
  Object.assign(app, { requestSingleInstanceLock: () => primary, quit: () => quits++, relaunch: () => assert.fail('unexpected process relaunch'), isReady: () => true, getLocale: () => 'zh-CN', dock: { setIcon() {} } })
  class Window extends EventEmitter {
-  constructor() { super(); this.destroyed = false; this.reloads = 0; this.webContents = new EventEmitter(); Object.assign(this.webContents, { reload: () => this.reloads++, send() {}, setWindowOpenHandler() {}, session: { setPermissionRequestHandler() {}, setPermissionCheckHandler() {} } }); windows.push(this) }
-  isDestroyed() { return this.destroyed } isMinimized() { return false } show() {} focus() {} setTitle() {} loadURL() {}
+  constructor(options) { super(); this.visible = options.show !== false; this.destroyed = false; this.reloads = 0; this.webContents = new EventEmitter(); Object.assign(this.webContents, { reload: () => this.reloads++, send() {}, setWindowOpenHandler() {}, session: { setPermissionRequestHandler() {}, setPermissionCheckHandler() {} } }); windows.push(this) }
+  isDestroyed() { return this.destroyed } isMinimized() { return false } isVisible() { return this.visible } show() { this.visible = true } focus() {} setTitle() {} loadURL() {}
  }
  const ipc = { on: (n, f) => { commands[n] = f }, handle() {} }
  const mocks = { './helpers/process-diagnostics': () => {}, electron: { app, BrowserWindow: Window, protocol: { registerSchemesAsPrivileged() {} }, Menu: { buildFromTemplate: () => ({}), setApplicationMenu() {} }, dialog: {}, nativeTheme: {} }, './helpers/file-access': { grantFolder() {} }, './helpers/editor-permissions': () => false, './helpers/trusted-ipc': { ...ipc, default: ipc, __esModule: true, setTrustedWindow() {} }, './helpers/external-link': { openExternal: () => Promise.resolve() }, './helpers/protocol': () => {}, './helpers/media-protocol': { registerMediaProtocol() {}, grantImage() {} }, './server/app': class {}, './assets/locales-menu': { 'zh-CN': {} }, './server': () => { const s = { app: {}, closes: 0, close() { this.closes++ } }; servers.push(s); return s }, path }
@@ -13,6 +13,8 @@ function launch(primary = true) {
  return { app, commands, windows, servers, get quits() { return quits } }
 }
 const m = launch(); m.app.emit('ready'); assert.equal(m.windows.length, 1)
+m.app.emit('second-instance'); assert.equal(m.windows[0].isVisible(), false)
+m.windows[0].emit('ready-to-show'); assert.equal(m.windows[0].isVisible(), true)
 for (let i = 0; i < 5; i++) m.commands['app-refresh']()
 assert.equal(m.windows[0].reloads, 5); assert.equal(m.quits, 0)
 m.app.emit('second-instance'); m.app.emit('activate'); assert.equal(m.windows.length, 1)

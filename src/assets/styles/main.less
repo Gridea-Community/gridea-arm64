@@ -43,3 +43,9 @@
 .post-setting-group[open] > summary::after { transform: rotate(90deg); }
 .post-setting-content { padding: 16px 24px 24px; }
 .post-setting-group > summary:focus-visible { outline: 2px solid #1a5ccf; outline-offset: -2px; }
+
+// Crossfade the interface when the appearance changes.
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+}
