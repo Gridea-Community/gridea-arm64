@@ -23,9 +23,9 @@ Validation reused an existing pinned dependency installation via a temporary sym
 
 ## Before a binary release
 
-Use `X.Y.Z-arm64.N` in package.json and in the app. `X.Y.Z` is the upstream Gridea baseline. Start `N` at 1 for each baseline and increment it with each ARM64 release. Keep the macOS build number separately.
+Use `X.Y.Z-arm64.N.alpha` for local test builds, `X.Y.Z-arm64.N.beta` for GitHub previews, and `X.Y.Z-arm64.N` for stable releases. `X.Y.Z` is the upstream Gridea baseline and `N` is the ARM64 release sequence. If a channel needs multiple revisions, append two numeric identifiers, as in `X.Y.Z-arm64.N.alpha.Y.Z` or `X.Y.Z-arm64.N.beta.Y.Z`.
 
-Use `vX.Y.Z-arm64.N` for both the Git tag and the GitHub Release title. Name the download `Gridea-for-ARM64-X.Y.Z-arm64.N.zip` and use that exact filename in `SHA256SUMS.txt`.
+Keep the full version in package.json. Prefix it with `v` in the app, Git tag and GitHub Release title. Name the ZIP `Gridea-for-ARM64-<version>.zip` using the package.json version and record the exact filename in `SHA256SUMS.txt`. Keep the macOS numeric build number separately.
 
 Write the Chinese and English notes in natural language. List the changes with Markdown `-` bullets in each language, then close with a short introduction to Gridea for ARM64 based on the previous release. Share both drafts with the maintainer for approval before publishing. Use GitHub’s pre-release setting to identify test builds.
 
