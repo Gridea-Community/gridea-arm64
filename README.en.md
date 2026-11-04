@@ -2,21 +2,13 @@
 
 [简体中文](README.md) | English
 
-An unofficial Apple Silicon maintenance fork of [Gridea](https://github.com/getgridea/gridea). Built with Electron and runs natively on ARM64 without Rosetta. This is separate from the SwiftUI client and is not an upstream official release.
+Gridea for ARM64 is a community-maintained fork of Gridea for Apple Silicon Macs. It uses Electron, runs without Rosetta, keeps the familiar writing and publishing workflow, and lets you choose light mode, dark mode, or follow your Mac’s appearance.
 
-Baseline: Gridea 0.9.3, internal build 0.9.3.9. **Pre-release software**, not a stable release.
+This preview is based on Gridea 0.9.3 and has an internal build number of 0.9.3.9.
 
 [Download test builds](https://github.com/Gridea-Community/gridea-arm64/releases) · [Installation and backups](docs/INSTALL.md)
 
-## Changes
-
-- Native Apple Silicon runtime and Gridea app icon.
-- System, light and dark appearance, preserving Gridea workflows and theme interfaces.
-- webpack 5 with mandatory Vue/TypeScript checks.
-- Isolated renderer, restricted IPC, local-file and preview hardening.
-- Atomic article/JSON writes and local Vue 2 compiler mitigations with regression tests.
-
-## Build and test
+## Build from source
 
 Requires Apple Silicon macOS 13+, Node.js 22+, pnpm 10.20.0 and Python 3. First installation needs network access for dependencies and Electron.
 
@@ -31,11 +23,11 @@ codesign --force --deep --sign - 'release/Gridea for ARM64.app'
 python3 scripts/verify-arm64-package.py
 ```
 
-Output: `release/Gridea for ARM64.app`. The command above creates an ad-hoc local signature, **not Developer ID signing or Apple notarization**. Downloads may be blocked by Gatekeeper. See the installation guide before using a test build.
+You’ll find the app at `release/Gridea for ARM64.app`. The command above uses ad-hoc signing. Our preview downloads are signed the same way and have yet to be notarized by Apple.
 
 `pnpm electron:serve` uses the ignored local `dev-profile`. `pnpm test:sites` renders disposable fixtures for four bundled themes; set `GRIDEA_SITE_FIXTURES` to a directory of additional site folders if needed. The command never deploys.
 
-## Data and limitations
+## Using an existing site
 
 Back up the complete source site and test a copy first. Do not edit the same site in upstream Gridea and this app simultaneously. The existing preview bundle identifier `dev.gridea.arm-preview` and data directory `~/Library/Application Support/Gridea ARM Preview` are deliberately retained for compatibility after renaming.
 
