@@ -17,7 +17,7 @@ export default class System extends Vue {
     wrapper: { span: 12 },
   }
 
-  version = `v${pkg.version}`
+  version = `v${pkg.version.replace(/^(\d+\.\d+\.\d+-arm64\.\d+)\.(alpha|beta)\.(.+)$/, '$1 $2 $3')}`
 
   currentLanguage = 'zhHans'
 

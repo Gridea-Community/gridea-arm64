@@ -1,4 +1,4 @@
-import pathlib,plistlib,subprocess,argparse
+import pathlib,plistlib,subprocess,argparse,json
 root=pathlib.Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser();parser.add_argument('--app',type=pathlib.Path);args=parser.parse_args()
 app=args.app or root/'release/Gridea for ARM64.app';res=app/'Contents/Resources'
@@ -12,6 +12,14 @@ for name in ['background.js','preload.js','editor.worker.js','startup.cjs']:
  assert (res/'app'/name).is_file(),name
 assert {p.name for p in (res/'sample-blog/themes').iterdir()}=={'fly','notes','paper','simple'}
 assert not (res/'app/node_modules/typescript').exists()
+runtime=json.loads((res/'app/runtime-dependencies.json').read_text())
+metadata=json.loads((res/'app/package.json').read_text())
+assert set(metadata['dependencies'])==set(runtime)
+assert 'devDependencies' not in metadata
+for name in ['monaco-editor','ant-design-vue','vue','remixicon','@fontsource','v-emoji-picker']:
+ assert not (res/'app/node_modules'/name).exists(),name
+assert not list(app.rglob('.DS_Store'))
+assert not (res/'default_app.asar').exists()
 assert (res/'THIRD-PARTY-NOTICES.json').is_file()
 architecture=subprocess.check_output(['file',str(app/'Contents/MacOS/Electron')],text=True)
 assert 'arm64' in architecture and 'x86_64' not in architecture

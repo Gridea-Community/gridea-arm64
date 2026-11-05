@@ -139,7 +139,11 @@ function createWindow() {
   })
 
   const locale: string = app.getLocale() || 'zh-CN'
-  const menuLabels = messages[locale] || messages['zh-CN']
+  const language = locale.split('-')[0]
+  const localeKey = language === 'zh'
+    ? (/^zh-(TW|HK|MO)/i.test(locale) ? 'zh-TW' : 'zh-CN')
+    : ({ fr: 'fr-FR', ja: 'ja-JP' } as Record<string, string>)[language] || language
+  const menuLabels = messages[localeKey] || messages.en
   // menu
   const template: any = [
     {
@@ -169,20 +173,44 @@ function createWindow() {
     },
     {
       role: 'windowMenu',
+      label: menuLabels.window,
+      submenu: [
+        { role: 'minimize', label: menuLabels.minimize },
+        { role: 'zoom', label: menuLabels.zoom },
+        { type: 'separator' },
+        { role: 'front', label: menuLabels.front },
+      ],
     },
     {
       role: 'help',
       label: menuLabels.help,
       submenu: [
         {
-          label: 'Learn More',
-          click() { shell.openExternal('https://github.com/getgridea/gridea') },
+          label: menuLabels.learnMore,
+          click() { shell.openExternal('https://github.com/Gridea-Community/gridea-arm64') },
         },
       ],
     },
   ]
 
-  if (process.platform === 'darwin') template.unshift({ role: 'appMenu' })
+  if (process.platform === 'darwin') {
+    const appName = 'Gridea for ARM64'
+    template.unshift({
+      role: 'appMenu',
+      label: appName,
+      submenu: [
+        { role: 'about', label: `${menuLabels.about} ${appName}` },
+        { type: 'separator' },
+        { role: 'services', label: menuLabels.services },
+        { type: 'separator' },
+        { role: 'hide', label: `${menuLabels.hide} ${appName}` },
+        { role: 'hideothers', label: menuLabels.hideothers },
+        { role: 'unhide', label: menuLabels.unhide },
+        { type: 'separator' },
+        { role: 'quit', label: `${menuLabels.quit} ${appName}` },
+      ],
+    })
+  }
   menu = Menu.buildFromTemplate(template)
   Menu.setApplicationMenu(menu)
 
