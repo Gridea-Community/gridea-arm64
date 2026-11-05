@@ -47,7 +47,7 @@
     <a-layout class="right-container">
       <div class="content">
         <keep-alive exclude="Loading,Theme">
-          <router-view></router-view>
+          <router-view v-if="site.appDir"></router-view>
         </keep-alive>
       </div>
     </a-layout>
@@ -177,6 +177,7 @@ export default class App extends Vue {
     this.$bus.$on('site-reload', () => {
       this.reloadSite()
     })
+    this.reloadSite()
     // This locally built preview has no upstream update channel.
 
     ipcRenderer.on(('log-error'), (event: any, result: any) => {
@@ -215,11 +216,11 @@ export default class App extends Vue {
   public reloadSite() {
     const siteFolder = localStorage.getItem('sourceFolder') || ''
 
-    ipcRenderer.send('app-site-reload', { siteFolder })
     ipcRenderer.once('app-site-loaded', (event: IpcRendererEvent, result: Site) => {
       console.log(result)
       this.updateSite(result)
     })
+    ipcRenderer.send('app-site-reload', { siteFolder })
   }
 
   public preview() {

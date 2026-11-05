@@ -18,7 +18,10 @@ ipcMain.on('app-appearance', (_event, mode) => {
 })
 ipcMain.on('app-locale', event => { event.returnValue = app.getLocale() })
 ipcMain.handle('app-select-folder', async () => {
-  const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+  const result = await dialog.showOpenDialog({
+    defaultPath: currentApp ? path.dirname(currentApp.appDir) : app.getPath('documents'),
+    properties: ['openDirectory', 'createDirectory'],
+  })
   if (!result.canceled) result.filePaths.forEach(grantFolder)
   return result
 })

@@ -37,7 +37,6 @@ export default class System extends Vue {
   }
 
   save() {
-    ipcRenderer.send('app-source-folder-setting', this.currentFolderPath)
     ipcRenderer.once('app-source-folder-set', (event: IpcRendererEvent, data: any) => {
       if (data) {
         this.$message.success(String(this.$t('saved')))
@@ -46,6 +45,7 @@ export default class System extends Vue {
         this.$message.error(String(this.$t('saveError')))
       }
     })
+    ipcRenderer.send('app-source-folder-setting', this.currentFolderPath)
   }
 
   async handleFolderSelect() {
