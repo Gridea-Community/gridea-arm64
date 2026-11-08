@@ -7,7 +7,7 @@ if (!process.env.GRIDEA_TEST_HOME) {
   const home = path.join(app.getPath('appData'), 'Gridea ARM Preview')
   fs.mkdirSync(home, { recursive: true })
   const blog = path.join(home, 'Gridea')
-  if (!fs.existsSync(blog)) fs.cpSync(path.join(process.resourcesPath, 'sample-blog'), blog, { recursive: true })
+  if (!fs.existsSync(blog)) fs.cpSync(path.join(__dirname, 'default-files'), blog, { recursive: true })
   const configDir = path.join(home, '.gridea')
   fs.mkdirSync(configDir, { recursive: true })
   const config = path.join(configDir, 'config.json')

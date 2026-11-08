@@ -10,7 +10,9 @@ for name in ['gridea.icns','electron.icns']:
  assert (res/name).read_bytes()==(root/'public/app-icons/gridea.icns').read_bytes(),name
 for name in ['background.js','preload.js','editor.worker.js','startup.cjs']:
  assert (res/'app'/name).is_file(),name
-assert {p.name for p in (res/'sample-blog/themes').iterdir()}=={'fly','notes','paper','simple'}
+assert {p.name for p in (res/'app/default-files/themes').iterdir()}=={'fly','notes','paper','simple'}
+for name in ['sample-blog','build-patches','BUILD-PATCHES.json']:
+ assert not (res/name).exists(),name
 assert not (res/'app/node_modules/typescript').exists()
 runtime=json.loads((res/'app/runtime-dependencies.json').read_text())
 metadata=json.loads((res/'app/package.json').read_text())

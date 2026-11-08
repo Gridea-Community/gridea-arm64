@@ -1,6 +1,8 @@
 <template>
   <div id="app">
-    <router-view />
+    <a-config-provider :locale="componentLocale">
+      <router-view />
+    </a-config-provider>
   </div>
 </template>
 
@@ -8,9 +10,26 @@
 import shell from '@/helpers/renderer-link'
 import Vue from 'vue'
 import Component from 'vue-class-component'
+import { AppLanguage, isAppLanguage } from './helpers/app-language'
+
+const traditionalChinese = require('ant-design-vue/lib/locale-provider/zh_TW').default
+const componentLocales: Record<AppLanguage, any> = {
+  zhHans: require('ant-design-vue/lib/locale-provider/zh_CN').default,
+  zh_TW: traditionalChinese,
+  zh_HK: traditionalChinese, // Ant Design Vue has no dedicated Hong Kong locale.
+  en: require('ant-design-vue/lib/locale-provider/en_US').default,
+  fr_FR: require('ant-design-vue/lib/locale-provider/fr_FR').default,
+  ru: require('ant-design-vue/lib/locale-provider/ru_RU').default,
+  ja_JP: require('ant-design-vue/lib/locale-provider/ja_JP').default,
+}
 
 @Component
 export default class App extends Vue {
+  get componentLocale() {
+    const language = this.$i18n.locale
+    return componentLocales[isAppLanguage(language) ? language : 'en']
+  }
+
   mounted() {
     document.addEventListener('click', (event: any) => {
       if (event.target.tagName === 'A' && event.target.href.startsWith('http')) {

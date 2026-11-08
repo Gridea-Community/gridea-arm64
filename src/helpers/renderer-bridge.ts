@@ -1,3 +1,5 @@
+export { default as markdown } from '../server/plugins/markdown'
+export { default as createSlug } from './slug'
 import type { IpcRendererEvent } from 'electron'
 export type { IpcRendererEvent } from 'electron'
 
@@ -9,8 +11,6 @@ interface GrideaBridge {
   receive(channel: string, callback: (...args: any[]) => void, once: boolean): () => void
   filePath(file: File): string
   localURL(value: string): string
-  markdown(content: string): string
-  slug(text: any, filenameMode?: boolean, saveLowerChars?: boolean): string
 }
 declare global { interface Window { gridea: GrideaBridge } }
 const listeners = new Map<string, Set<() => void>>()
@@ -40,6 +40,4 @@ export const ipcRenderer = {
     listeners.delete(channel)
   },
 }
-export const markdown = { render: (content: string) => window.gridea.markdown(content) }
-export const createSlug = (text: any, filenameMode?: boolean, saveLowerChars?: boolean) => window.gridea.slug(text, filenameMode, saveLowerChars)
 export const shell = { openExternal: (url: string) => window.gridea.invoke('app-open-external', url) }

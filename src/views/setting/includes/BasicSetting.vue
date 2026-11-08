@@ -87,8 +87,8 @@
       </template>
       <a-form-item v-if="form.platform !== 'sftp'" :label="$t('Proxy')" :labelCol="formLayout.label" :wrapperCol="formLayout.wrapper" :colon="false">
         <a-radio-group name="Proxy" v-model="form.enabledProxy">
-          <a-radio value="direct">Direct</a-radio>
-          <a-radio value="proxy">Proxy</a-radio>
+          <a-radio value="direct">{{ $t('proxyDirect') }}</a-radio>
+          <a-radio value="proxy">{{ $t('proxyEnabled') }}</a-radio>
         </a-radio-group>
       </a-form-item>
       <template v-if="['proxy'].includes(form.enabledProxy) && form.platform !== 'sftp'">

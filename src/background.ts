@@ -9,12 +9,26 @@ import {
 import createProtocol from './helpers/protocol'
 import App from './server/app'
 import messages from './assets/locales-menu'
+import { AppLanguage, isAppLanguage, menuLocaleByLanguage, systemLanguage } from './helpers/app-language'
 import initServer from './server'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import { registerMediaProtocol, grantImage } from './helpers/media-protocol'
 
 ipcMain.on('app-appearance', (_event, mode) => {
   if (['system', 'light', 'dark'].includes(mode)) nativeTheme.themeSource = mode
+})
+ipcMain.on('app-file-url-path', (event, value) => {
+  let file: string | null = null
+  if (typeof value === 'string' && value.startsWith('file:')) {
+    try { file = fileURLToPath(value) } catch {}
+  }
+  event.returnValue = file
+})
+ipcMain.on('app-language', (_event, value) => {
+  if (!isAppLanguage(value) || value === selectedLanguage) return
+  selectedLanguage = value
+  installMenu(value)
 })
 ipcMain.on('app-locale', event => { event.returnValue = app.getLocale() })
 ipcMain.handle('app-select-folder', async () => {
@@ -55,7 +69,7 @@ app.on('second-instance', () => {
     win.focus()
   } else if (app.isReady()) createWindow()
 })
-let menu: Menu
+let selectedLanguage: AppLanguage | undefined
 let httpServer: ReturnType<typeof initServer> | null = null
 let protocolRegistered = false
 let currentApp: App | null = null
@@ -79,7 +93,7 @@ function createWindow() {
       webSecurity: true,
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false, // Preload runs the legacy Markdown engine in its isolated world.
+      sandbox: true,
       preload: path.join(__dirname, 'preload.js'),
     },
     // frame: false, // 去除默认窗口栏
@@ -138,13 +152,26 @@ function createWindow() {
     if (win === createdWindow) win = null
   })
 
-  const locale: string = app.getLocale() || 'zh-CN'
-  const language = locale.split('-')[0]
-  const localeKey = language === 'zh'
-    ? (/^zh-(TW|HK|MO)/i.test(locale) ? 'zh-TW' : 'zh-CN')
-    : ({ fr: 'fr-FR', ja: 'ja-JP' } as Record<string, string>)[language] || language
-  const menuLabels = messages[localeKey] || messages.en
-  // menu
+  installMenu(selectedLanguage || systemLanguage(app.getLocale()))
+
+  const s = initServer()
+  httpServer = s
+
+  const setting = {
+    mainWindow: win,
+    app,
+    baseDir: __dirname,
+    previewServer: s.app,
+  }
+
+  // Init app
+  const appInstance = new App(setting)
+  currentApp = appInstance
+  console.log('Main process runing...', appInstance.appDir) // DELETE ME
+}
+
+function installMenu(language: AppLanguage) {
+  const menuLabels = messages[menuLocaleByLanguage[language]]
   const template: any = [
     {
       label: menuLabels.edit,
@@ -153,7 +180,7 @@ function createWindow() {
           label: menuLabels.save,
           accelerator: 'CmdOrCtrl+S',
           click: () => {
-            win.webContents.send('click-menu-save')
+            if (win && !win.isDestroyed()) win.webContents.send('click-menu-save')
           },
         },
         { type: 'separator' },
@@ -189,6 +216,10 @@ function createWindow() {
           label: menuLabels.learnMore,
           click() { shell.openExternal('https://github.com/Gridea-Community/gridea-arm64') },
         },
+        {
+          label: menuLabels.grideaHelp,
+          click() { shell.openExternal('https://github.com/getgridea/gridea') },
+        },
       ],
     },
   ]
@@ -211,23 +242,7 @@ function createWindow() {
       ],
     })
   }
-  menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
-
-  const s = initServer()
-  httpServer = s
-
-  const setting = {
-    mainWindow: win,
-    app,
-    baseDir: __dirname,
-    previewServer: s.app,
-  }
-
-  // Init app
-  const appInstance = new App(setting)
-  currentApp = appInstance
-  console.log('Main process runing...', appInstance.appDir) // DELETE ME
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
 // Quit when all windows are closed.

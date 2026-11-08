@@ -1,5 +1,5 @@
 """Package the compiled app with the verified official ARM64 Electron runtime."""
-import pathlib,shutil,json,plistlib,subprocess,argparse,hashlib
+import pathlib,shutil,json,plistlib,subprocess,argparse
 root=pathlib.Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser();parser.add_argument('--output',type=pathlib.Path)
 args=parser.parse_args();out=args.output or root/'release';out.mkdir(parents=True,exist_ok=True);app=out/'Gridea for ARM64.app'
@@ -51,18 +51,12 @@ for source in sorted(noticeSources):
  metadata=json.loads((source/'package.json').read_text())
  notices.append({key:metadata.get(key) for key in ['name','version','license','repository']})
 (resources/'THIRD-PARTY-NOTICES.json').write_text(json.dumps(notices,indent=2,ensure_ascii=False))
-patches=[]
-for name,file in pkg.get('pnpm',{}).get('patchedDependencies',{}).items():
- source=root/file;patches.append({'package':name,'file':source.name,'sha256':hashlib.sha256(source.read_bytes()).hexdigest()})
-shutil.copytree(root/'patches',resources/'build-patches',dirs_exist_ok=True)
-(resources/'BUILD-PATCHES.json').write_text(json.dumps(patches,indent=2))
-shutil.copytree(root/'public/default-files',resources/'sample-blog',dirs_exist_ok=True,ignore=shutil.ignore_patterns('.DS_Store'))
 shutil.copy(root/'public/app-icons/gridea.icns',resources/'gridea.icns')
 # Replace Electron's fallback icon as well as the explicit bundle icon.
 shutil.copy(root/'public/app-icons/gridea.icns',resources/'electron.icns')
 shutil.copy(root/'LICENSE',resources/'LICENSE-Gridea')
 shutil.copytree(root/'licenses',resources/'third-party-licenses',dirs_exist_ok=True)
-plist=app/'Contents/Info.plist';d=plistlib.loads(plist.read_bytes());d.update(CFBundleName='Gridea for ARM64',CFBundleDisplayName='Gridea for ARM64',CFBundleIdentifier='dev.gridea.arm-preview',CFBundleShortVersionString='0.9.3',CFBundleVersion='0.9.3.25',CFBundleIconFile='gridea.icns');d.pop('CFBundleIconName',None);plist.write_bytes(plistlib.dumps(d))
+plist=app/'Contents/Info.plist';d=plistlib.loads(plist.read_bytes());d.update(CFBundleName='Gridea for ARM64',CFBundleDisplayName='Gridea for ARM64',CFBundleIdentifier='dev.gridea.arm-preview',CFBundleShortVersionString='0.9.3',CFBundleVersion='0.9.3.27',CFBundleIconFile='gridea.icns');d.pop('CFBundleIconName',None);plist.write_bytes(plistlib.dumps(d))
 defaultApp=resources/'default_app.asar'
 if defaultApp.exists():defaultApp.unlink()
 print(app);print('Production packages:',len(seen))

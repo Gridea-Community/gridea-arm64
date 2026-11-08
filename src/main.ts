@@ -14,12 +14,13 @@ import Prism from '@/helpers/prism'
 import VueShortkey from 'vue-shortkey'
 import { ipcRenderer } from '@/helpers/renderer-bridge'
 import locale from './assets/locales'
+import { isAppLanguage, menuLocaleByLanguage, systemLanguage } from './helpers/app-language'
 import App from './App.vue'
 import router from './router'
 import store from './store/index'
 import VueBus from './vue-bus'
 import ga from './helpers/analytics'
-import './helpers/vee-validate'
+import { setRequiredMessage } from './helpers/vee-validate'
 
 ga.event('Client', 'show', {
   evLabel: 'startup',
@@ -27,18 +28,27 @@ ga.event('Client', 'show', {
 
 
 
-const defaultLocale = ({
-  'zh-CN': 'zhHans',
-  'zh-TW': 'zh_TW',
-  'en-US': 'en',
-} as any)[ipcRenderer.sendSync('app-locale') || 'zh-CN']
+const savedLanguage = localStorage.getItem('language')
+const initialLanguage = isAppLanguage(savedLanguage)
+  ? savedLanguage
+  : systemLanguage(ipcRenderer.sendSync('app-locale') || '')
 
 Vue.use(VueI18n)
 const i18n = new VueI18n({
-  locale: localStorage.getItem('language') || defaultLocale,
+  locale: initialLanguage,
+  fallbackLocale: 'en',
   messages: locale as any,
   silentTranslationWarn: true,
 })
+
+function applyLanguage(value: string) {
+  if (!isAppLanguage(value)) return
+  document.documentElement.lang = menuLocaleByLanguage[value]
+  setRequiredMessage(String(i18n.t('requiredField', value)))
+  ipcRenderer.send('app-language', value)
+}
+
+applyLanguage(initialLanguage)
 
 Prism.highlightAll()
 
@@ -54,6 +64,7 @@ new Vue({
   router,
   store,
   i18n,
+  watch: { '$i18n.locale': applyLanguage },
   render: h => h(App),
   mounted() {
     if (router.currentRoute.path === '/') router.replace('/articles').catch(() => {})

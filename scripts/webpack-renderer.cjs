@@ -20,6 +20,12 @@ module.exports = {
     { test: /\.(png|jpe?g|gif|svg|ico|woff2?|eot|ttf|otf)$/i, type: 'asset/resource' },
   ] },
   plugins: [
+    // Gridea accepts explicit image dimensions; imsize's optional disk autofill is unused.
+    new webpack.NormalModuleReplacementPlugin(/^\.\/imsize$/, resource => {
+      if (resource.context.endsWith(path.join('markdown-it-imsize', 'lib'))) {
+        resource.request = path.join(root, 'scripts/no-image-autofill.cjs')
+      }
+    }),
     new VueLoaderPlugin(),
     new HtmlWebpackPlugin({ template: path.join(root, 'public/index.html'), templateParameters: { BASE_URL: './' }, scriptLoading: 'defer', minify: false }),
     new webpack.DefinePlugin({ 'process.env.NODE_ENV': JSON.stringify('production'), 'process.env.BASE_URL': JSON.stringify('./') }),
