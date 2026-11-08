@@ -42,9 +42,9 @@ const messages: any = {
     save: '儲存',
     undo: '撤銷',
     redo: '重做',
-    cut: '剪切',
-    copy: '複製',
-    paste: '粘貼',
+    cut: '剪下',
+    copy: '拷貝',
+    paste: '貼上',
     delete: '刪除',
     selectall: '全選',
     toggledevtools: '開發者工具',
@@ -158,6 +158,7 @@ const messages: any = {
 }
 messages['zh-HK'] = {
   ...messages['zh-TW'],
+  copy: '複製',
   front: '將所有視窗移到最前',
   help: '說明',
   learnMore: '了解更多',

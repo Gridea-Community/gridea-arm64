@@ -81,6 +81,14 @@ app.whenReady().then(async()=>{
     await wait(async()=>Menu.getApplicationMenu().items.some(item=>item.label===help));
     const menu=Menu.getApplicationMenu().items;
     assert.ok(menu.some(item=>item.label===edit));
+    if(key==='zh_HK' || key==='zh_TW'){
+     const commands=menu.find(item=>item.label===edit).submenu.items;
+     assert.equal(commands.find(item=>item.role==='cut').label,'剪下');
+     assert.equal(commands.find(item=>item.role==='paste').label,'貼上');
+     assert.equal(commands.find(item=>item.role==='copy').label,key==='zh_HK'?'複製':'拷貝');
+     const terms=await run("['email','articleDefault','tagDefault','numberArticlesRSS','inConfig'].map(key=>document.querySelector('#app').__vue__.$t(key))");
+     assert.deepEqual(terms,[key==='zh_HK'?'電郵':'電子郵件','文章 URL 預設格式','標籤 URL 預設格式','RSS/Feed 文章數量','設定中']);
+    }
     assert.deepEqual(menu.find(item=>item.label===help).submenu.items.map(item=>item.label),[learn,upstream]);
    };
    const systemLocale=process.env.GRIDEA_TEST_SYSTEM_LOCALE || 'fr-CA';

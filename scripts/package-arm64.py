@@ -56,7 +56,7 @@ shutil.copy(root/'public/app-icons/gridea.icns',resources/'gridea.icns')
 shutil.copy(root/'public/app-icons/gridea.icns',resources/'electron.icns')
 shutil.copy(root/'LICENSE',resources/'LICENSE-Gridea')
 shutil.copytree(root/'licenses',resources/'third-party-licenses',dirs_exist_ok=True)
-plist=app/'Contents/Info.plist';d=plistlib.loads(plist.read_bytes());d.update(CFBundleName='Gridea for ARM64',CFBundleDisplayName='Gridea for ARM64',CFBundleIdentifier='dev.gridea.arm-preview',CFBundleShortVersionString='0.9.3',CFBundleVersion='0.9.3.27',CFBundleIconFile='gridea.icns');d.pop('CFBundleIconName',None);plist.write_bytes(plistlib.dumps(d))
+plist=app/'Contents/Info.plist';d=plistlib.loads(plist.read_bytes());d.update(CFBundleName='Gridea for ARM64',CFBundleDisplayName='Gridea for ARM64',CFBundleIdentifier='dev.gridea.arm-preview',CFBundleShortVersionString='0.9.3',CFBundleVersion='0.9.3.28',CFBundleIconFile='gridea.icns');d.pop('CFBundleIconName',None);plist.write_bytes(plistlib.dumps(d))
 defaultApp=resources/'default_app.asar'
 if defaultApp.exists():defaultApp.unlink()
 print(app);print('Production packages:',len(seen))
