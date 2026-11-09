@@ -31,7 +31,7 @@ async function main() {
     const errors = []
     const instance = { appDir: blog, buildDir: path.join(blog, 'output'), db: { ...posts, themeConfig: { archivesPath: 'archives', postPath: 'post', tagPath: 'tag', ...theme.config }, themeCustomConfig: theme.customConfig, currentThemeConfig: definition.customConfig, setting: setting.config, commentSetting: setting.comment }, mainWindow: { webContents: { send: channel => errors.push(channel) } }, previewServer: { get: () => 4000 } }
     const renderer = new Renderer(instance)
-    await renderer.preview()
+    await renderer.preview(4000)
     if (errors.length) throw new Error(`${name} render errors: ${errors.join(',')}`)
     const html = []
     function walk(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const file = path.join(dir, entry.name); if (entry.isDirectory()) walk(file); else if (file.endsWith('.html')) html.push(file) } }

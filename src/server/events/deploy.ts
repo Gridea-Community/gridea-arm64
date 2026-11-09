@@ -29,13 +29,15 @@ export default class DeployEvents {
         'netlify': netlify,
       } as any)[platform]
       
-      // render
-      renderer.db.themeConfig.domain = renderer.db.setting.domain
-      await renderer.renderAll()
-      
-      // publish
-      const result = await client.publish()
-      event.sender.send('site-published', result)
+      let result
+      try {
+        renderer.db.themeConfig.domain = renderer.db.setting.domain
+        await renderer.renderAll()
+        result = await client.publish()
+      } catch (error) {
+        result = { success: false, message: error instanceof Error ? error.message : String(error) }
+      }
+      if (!event.sender.isDestroyed()) event.sender.send('site-published', result)
     })
 
     ipcMain.on('remote-detect', async (event: IpcMainEvent, params: any) => {

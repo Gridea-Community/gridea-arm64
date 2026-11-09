@@ -35,21 +35,18 @@ export default class Renderer extends Model {
 
   siteData: any = {}
 
-  previewPort: number
-
   utils: any = {}
 
   constructor(appInstance: any) {
     super(appInstance)
-    this.previewPort = appInstance.previewServer.get('port')
     this.loadConfig()
 
     this.utils.now = Date.now()
     this.utils.moment = moment
   }
 
-  async preview() {
-    this.db.themeConfig.domain = `http://localhost:${this.previewPort}`
+  async preview(port: number) {
+    this.db.themeConfig.domain = `http://localhost:${port}`
     await this.renderAll()
   }
 
@@ -209,9 +206,9 @@ export default class Renderer extends Model {
       excludeHidePostsData = isTopPosts.concat(notTopPosts)
     }
 
-    const renderData: any = {
+    const renderData = {
       menus: this.menuData,
-      posts: [],
+      posts: [] as IPostRenderData[],
       pagination: {
         prev: '',
         next: '',
@@ -220,32 +217,16 @@ export default class Renderer extends Model {
       site: this.siteData,
     }
 
-    let html = ''
     const outputFolder = urlJoin(this.outputDir, archivePath)
     let renderPath = urlJoin(outputFolder, 'index.html')
-
-    const renderFile = async (path: string, data: any) => {
-      await ejs.renderFile(path, data, {}, async (err: any, str) => {
-        if (err) {
-          console.error('❌ Render post list error')
-          this.mainWindow.webContents.send('log-error', {
-            type: 'Render post list error',
-            message: err.message,
-          })
-        }
-        if (str) {
-          html = str
-        }
-      })
-    }
 
     // If there is no article to render
     if (!excludeHidePostsData.length) {
       renderData.site.isHomepage = !archivePath
 
       fse.ensureDirSync(outputFolder)
-      renderFile(renderTemplatePath, renderData)
-      await fs.writeFileSync(renderPath, html)
+      const html = await ejs.renderFile(renderTemplatePath, renderData)
+      fs.writeFileSync(renderPath, html)
       return
     }
 
@@ -273,7 +254,7 @@ export default class Renderer extends Model {
         fse.ensureDirSync(urlJoin(this.outputDir, archivePath))
       }
 
-      renderFile(renderTemplatePath, renderData)
+      const html = await ejs.renderFile(renderTemplatePath, renderData)
 
       console.log('👏  PostList Page:', renderPath)
       fs.writeFileSync(renderPath, html)
@@ -310,19 +291,7 @@ export default class Renderer extends Model {
         commentSetting: this.db.commentSetting,
         site: this.siteData,
       }
-      let html = ''
-      ejs.renderFile(urlJoin(this.themePath, 'templates', 'post.ejs'), renderData, {}, async (err: any, str) => {
-        if (err) {
-          console.error('❌ Render post detail error')
-          this.mainWindow.webContents.send('log-error', {
-            type: 'Render post detail error',
-            message: err.message,
-          })
-        }
-        if (str) {
-          html = str
-        }
-      })
+      const html = await ejs.renderFile(urlJoin(this.themePath, 'templates', 'post.ejs'), renderData)
 
       const renderFolerPath = urlJoin(this.outputDir, `${this.db.themeConfig.postPath}`, post.fileName)
       fse.ensureDirSync(renderFolerPath)
@@ -342,21 +311,8 @@ export default class Renderer extends Model {
       themeConfig: this.db.themeConfig,
       site: this.siteData,
     }
-    let html = ''
-
     fse.ensureDirSync(tagsFolder)
-    await ejs.renderFile(urlJoin(this.themePath, 'templates', 'tags.ejs'), renderData, {}, async (err: any, str) => {
-      if (err) {
-        console.log('❌ Render tags page error', err)
-        this.mainWindow.webContents.send('log-error', {
-          type: 'Render tags page error',
-          message: err.message,
-        })
-      }
-      if (str) {
-        html = str
-      }
-    })
+    const html = await ejs.renderFile(urlJoin(this.themePath, 'templates', 'tags.ejs'), renderData)
     console.log('👏  Tags Page:', renderPath)
     fs.writeFileSync(renderPath, html)
   }
@@ -416,19 +372,7 @@ export default class Renderer extends Model {
             : ''
         }
 
-        let html = ''
-        ejs.renderFile(urlJoin(this.themePath, 'templates', 'tag.ejs'), renderData, {}, async (err: any, str) => {
-          if (err) {
-            console.log('❌ Render tag detail error', err)
-            this.mainWindow.webContents.send('log-error', {
-              type: 'Render tag detail error',
-              message: err.message,
-            })
-          }
-          if (str) {
-            html = str
-          }
-        })
+        const html = await ejs.renderFile(urlJoin(this.themePath, 'templates', 'tag.ejs'), renderData)
         console.log('👏  Tag Page:', renderPath)
         fs.writeFileSync(renderPath, html)
       }
@@ -468,10 +412,9 @@ export default class Renderer extends Model {
       site: this.siteData,
     }
 
-    customTemplates.forEach(async (name: string) => {
+    for (const name of customTemplates) {
       let renderFolder = urlJoin(this.outputDir, name.substring(0, name.length - 4))
       let renderPath = urlJoin(renderFolder, 'index.html')
-      let html = ''
 
       if (name === '404.ejs') {
         renderFolder = this.outputDir
@@ -479,21 +422,10 @@ export default class Renderer extends Model {
       }
 
       fse.ensureDirSync(renderFolder)
-      await ejs.renderFile(urlJoin(this.themePath, 'templates', name), renderData, async (err: any, str) => {
-        if (err) {
-          console.error('❌ Render custom page error', err)
-          this.mainWindow.webContents.send('log-error', {
-            type: 'Render custom page error',
-            message: err.message,
-          })
-        }
-        if (str) {
-          html = str
-        }
-      })
+      const html = await ejs.renderFile(urlJoin(this.themePath, 'templates', name), renderData)
       fse.writeFileSync(renderPath, html)
       console.log('✅ Render custom page success', renderPath)
-    })
+    }
   }
 
   /**
@@ -506,8 +438,15 @@ export default class Renderer extends Model {
     fse.ensureDirSync(cssFolderPath)
 
     const lessString = fs.readFileSync(lessFilePath, 'utf8')
-    const output = await less.render(lessString, { filename: lessFilePath })
-    let { css } = output
+    let css: string
+    try {
+      css = (await less.render(lessString, { filename: lessFilePath })).css
+    } catch (error) {
+      const diagnostic = error as { filename?: string, line?: number, message?: string }
+      const location = diagnostic.filename || lessFilePath
+      const line = diagnostic.line ? `:${diagnostic.line}` : ''
+      throw new Error(`${location}${line}\n${diagnostic.message || String(error)}`)
+    }
     const styleOverridePath = urlJoin(this.themePath, 'style-override.js')
     if (await fse.pathExists(styleOverridePath)) {
       delete __non_webpack_require__.cache[__non_webpack_require__.resolve(styleOverridePath)]

@@ -25,11 +25,11 @@
         </a-menu>
       </div>
       <div class="bottom-container">
-        <a-button class="preview-btn" block @click="preview">
+        <a-button class="preview-btn" block :loading="previewLoading" :disabled="publishLoading" @click="preview">
           <i class="zwicon-eye"></i>
           {{ $t('preview') }}
         </a-button>
-        <a-button class="sync-btn" block type="primary" :loading="publishLoading" @click="publish">
+        <a-button class="sync-btn" block type="primary" :loading="publishLoading" :disabled="previewLoading" @click="publish">
           <template v-if="!publishLoading">
             <i class="zwicon-deploy"></i>
             {{ $t('syncSite') }}
@@ -90,7 +90,6 @@
 
 <script lang="ts">
 import shell from '@/helpers/renderer-link'
-import { VNodeChildren } from 'vue'
 import { ipcRenderer, IpcRendererEvent, } from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
 import axios from 'axios'
@@ -117,6 +116,8 @@ export default class App extends Vue {
   version = (pkg as any).version
 
   drawer = true
+
+  previewLoading = false
 
   publishLoading = false
 
@@ -179,11 +180,6 @@ export default class App extends Vue {
     })
     this.reloadSite()
     // This locally built preview has no upstream update channel.
-
-    ipcRenderer.on(('log-error'), (event: any, result: any) => {
-      this.log = result
-      this.logModalVisible = true
-    })
   }
 
   mounted() {
@@ -224,45 +220,30 @@ export default class App extends Vue {
   }
 
   public preview() {
-    ipcRenderer.send('html-render')
-
+    if (this.previewLoading || this.publishLoading) return
+    this.previewLoading = true
     ga.event('Preview', 'Preview - start', { evLabel: this.site.setting.domain })
 
-    ipcRenderer.once('html-rendered', (event: IpcRendererEvent, result: any) => {
-      // this.$message.success(`🎉  ${this.$t('renderSuccess')}`)
+    ipcRenderer.once('html-rendered', (_event: IpcRendererEvent, result: any) => {
+      this.previewLoading = false
+      if (!result.success) {
+        this.log = {
+          type: String(this.$t('preview')).trim(),
+          message: result.serverUnavailable ? this.$t('renderError') : result.message,
+        }
+        this.logModalVisible = true
+        return
+      }
 
       ga.event('Preview', 'Preview - success', { evLabel: this.site.setting.domain })
-
-      ipcRenderer.send('app-preview-server-port-get')
-      ipcRenderer.once(
-        'app-preview-server-port-got',
-        (portGotEvent: IpcRendererEvent, port: number | string | null) => {
-          if (!port && typeof port !== 'number') {
-            this.$message.config({
-              top: '36px',
-            })
-            this.$message.open({
-              content: (h: Vue.CreateElement) => {
-                const errStyle = {
-                  display: 'inline-block',
-                  maxWidth: '800px',
-                }
-                return h('span', {
-                  style: errStyle,
-                }, `❌ ${this.$t('renderError')}` as any as VNodeChildren)
-              },
-              icon: '',
-            })
-          } else {
-            this.$message.success(`🎉  ${this.$t('renderSuccess')}`)
-            this.openInBrowser(`http://localhost:${port}`)
-          }
-        },
-      )
+      this.$message.success(`🎉  ${this.$t('renderSuccess')}`)
+      this.openInBrowser(`http://localhost:${result.port}`)
     })
+    ipcRenderer.send('html-render')
   }
 
   public publish() {
+    if (this.previewLoading || this.publishLoading) return
     const { setting } = this.site
     if (setting.platform === 'netlify' && !setting.netlifyAccessToken && !setting.netlifySiteId) {
       this.$message.error(`🙁  ${this.$t('syncWarning')}`)

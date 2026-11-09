@@ -20,6 +20,14 @@ const {app,BrowserWindow,dialog,Menu,shell}=require('electron'), assert=require(
 process.on('uncaughtException',error=>{console.error(error);app.exit(1)});
 let target; dialog.showOpenDialog=async options=>{assert.equal(options.defaultPath,process.env.GRIDEA_TEST_HOME);return {canceled:false,filePaths:[target]}};
 const watchdog=setTimeout(()=>app.exit(1),45000);
+const childProcess=require('node:child_process');
+const execFile=childProcess.execFile;
+const previewSounds=[];
+childProcess.execFile=(file,...args)=>{
+ if(file!=='/usr/bin/afplay')return execFile(file,...args);
+ previewSounds.push(...args[0]);
+ args[2](null,'','');
+};
 const issues=[];
 let auditReady;
 app.once('browser-window-created',(_event,win)=>{
@@ -133,8 +141,43 @@ app.whenReady().then(async()=>{
   }
 
   for(const theme of ['fly','notes','paper','simple']){
-    const result=await run("(async()=>{const site=document.querySelector('#app').__vue__.$store.state.site; const config={...site.themeConfig,themeName:"+JSON.stringify(theme)+"};const saved=await new Promise(r=>{window.gridea.receive('theme-saved',r,true);window.gridea.send('theme-save',config)}); if(!saved)throw Error('Theme save failed');await new Promise(r=>{window.gridea.receive('app-site-loaded',r,true);window.gridea.send('app-site-reload',{})});return await new Promise(r=>{window.gridea.receive('html-rendered',()=>r(true),true);window.gridea.send('html-render')})})()");
-    assert.equal(result,true);console.log('PASS packaged theme generation',theme);
+    const result=await run("(async()=>{const site=document.querySelector('#app').__vue__.$store.state.site; const config={...site.themeConfig,themeName:"+JSON.stringify(theme)+"};const saved=await new Promise(r=>{window.gridea.receive('theme-saved',r,true);window.gridea.send('theme-save',config)}); if(!saved)throw Error('Theme save failed');await new Promise(r=>{window.gridea.receive('app-site-loaded',r,true);window.gridea.send('app-site-reload',{})});return await new Promise(r=>{window.gridea.receive('html-rendered',r,true);window.gridea.send('html-render')})})()");
+    assert.equal(result.success,true,result.message);assert.ok(Number.isInteger(result.port));console.log('PASS packaged theme generation',theme);
+  }
+  if(process.platform==='darwin')assert.deepEqual(previewSounds,Array(4).fill('/System/Library/Sounds/Glass.aiff'));
+  previewSounds.length=0;
+  const previewURLs=[];
+  shell.openExternal=async url=>{previewURLs.push(url)};
+  const themePath=path.join(target,'themes','simple');
+  const styles=path.join(themePath,'assets','styles','main.less');
+  const customPage=path.join(themePath,'templates','broken-preview.ejs');
+  for(const [file,contents,diagnostic] of [
+   [styles,'.broken { color: ;', 'main.less'],
+   [customPage,'<% throw new Error("broken-preview-fixture") %>','broken-preview-fixture'],
+  ]){
+   const previous=fs.existsSync(file)?fs.readFileSync(file):null;
+   try{
+    fs.writeFileSync(file,contents);
+    win.blur();
+    assert.equal(win.isFocused(),false);
+    await run("document.querySelector('.preview-btn').click()");
+    await wait(()=>run("Array.from(document.querySelectorAll('.ant-modal pre')).some(el=>el.textContent.includes("+JSON.stringify(diagnostic)+"))"));
+    assert.equal(win.isFocused(),false);
+    assert.equal(previewURLs.length,0);
+    await run("Array.from(document.querySelectorAll('.ant-modal')).find(el=>el.querySelector('pre')?.textContent.includes("+JSON.stringify(diagnostic)+")).querySelector('.ant-modal-close').click()");
+    console.log('PASS preview error shown without refocusing:',diagnostic);
+   }finally{
+    if(previous===null)fs.unlinkSync(file);
+    else fs.writeFileSync(file,previous);
+   }
+  }
+  await run("document.querySelector('.preview-btn').click()");
+  await wait(()=>previewURLs.length===1);
+  assert.match(previewURLs[0],/^http:\\/\\/localhost:[0-9]+$/);
+  console.log('PASS preview succeeds after fixing the broken theme');
+  if(process.platform==='darwin'){
+   assert.deepEqual(previewSounds,['/System/Library/Sounds/Basso.aiff','/System/Library/Sounds/Basso.aiff','/System/Library/Sounds/Glass.aiff']);
+   console.log('PASS distinct macOS sounds for preview failure and success');
   }
   await run("document.querySelector('#app').__vue__.$router.push('/articles').then(()=>true,()=>true)");
   await run("(()=>{function find(vm){if(typeof vm.newArticle==='function')return vm;for(const child of vm.$children){const found=find(child);if(found)return found}}find(document.querySelector('#app').__vue__).newArticle();return true})()");
