@@ -1,5 +1,6 @@
 import { IpcMainEvent } from 'electron'
 import ipcMain from '../../helpers/trusted-ipc'
+import { playResultSound } from '../../helpers/preview-sound'
 import Deploy from '../deploy'
 import Renderer from '../renderer'
 import SftpDeploy from '../plugins/deploys/sftp'
@@ -37,7 +38,10 @@ export default class DeployEvents {
       } catch (error) {
         result = { success: false, message: error instanceof Error ? error.message : String(error) }
       }
-      if (!event.sender.isDestroyed()) event.sender.send('site-published', result)
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('site-published', result)
+        playResultSound(result.success === true)
+      }
     })
 
     ipcMain.on('remote-detect', async (event: IpcMainEvent, params: any) => {

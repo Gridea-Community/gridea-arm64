@@ -69,10 +69,14 @@
     </a-modal> -->
 
     <a-modal :width="900" :visible="logModalVisible" :footer="null" @cancel="logModalVisible = false">
-      <h2>{{ log.type }}</h2>
-      <pre>
-        {{ log.message }}
-      </pre>
+      <h2>{{ $t('previewFailed') }}</h2>
+      <p>{{ $t(log.serverUnavailable ? 'renderError' : 'previewFailureHint') }}</p>
+      <section v-if="log.message" class="preview-error-details">
+        <h3>{{ $t('previewErrorDetails') }}</h3>
+        <p v-if="previewDiagnostic.location" class="preview-error-location">{{ previewDiagnostic.location }}</p>
+        <pre v-if="previewDiagnostic.code">{{ previewDiagnostic.code }}</pre>
+        <p v-if="previewDiagnostic.reason" class="preview-error-reason">{{ previewDiagnostic.reason }}</p>
+      </section>
     </a-modal>
 
     <a-drawer
@@ -135,7 +139,19 @@ export default class App extends Vue {
 
   logModalVisible = false
 
-  log: any = {}
+  log = { serverUnavailable: false, message: '', undefinedVariable: '' }
+
+  get previewDiagnostic() {
+    const { message, undefinedVariable } = this.log
+    const split = /^(\/[^\r\n]+|[A-Za-z]:[\\/][^\r\n]+)\r?\n([\s\S]*)$/.exec(message)
+    const location = split ? split[1] : ''
+    const body = split ? split[2] : message
+    const context = /^((?:(?:[ \t]*>>)?[ \t]*\d+\|[^\r\n]*\r?\n)+)\r?\n([\s\S]*)$/.exec(body)
+    const reason = undefinedVariable
+      ? this.$t('previewUndefinedVariable', { name: undefinedVariable })
+      : context ? context[2] : body
+    return { location, code: context ? context[1].trimEnd() : '', reason }
+  }
 
   get currentRouter() {
     return this.$route.path
@@ -228,8 +244,9 @@ export default class App extends Vue {
       this.previewLoading = false
       if (!result.success) {
         this.log = {
-          type: String(this.$t('preview')).trim(),
-          message: result.serverUnavailable ? this.$t('renderError') : result.message,
+          serverUnavailable: Boolean(result.serverUnavailable),
+          message: result.message || '',
+          undefinedVariable: result.undefinedVariable || '',
         }
         this.logModalVisible = true
         return
@@ -322,6 +339,36 @@ export default class App extends Vue {
 </script>
 
 <style lang="less" scoped>
+  .preview-error-details {
+    margin-top: 24px;
+
+    h3 {
+      margin-bottom: 8px;
+    }
+
+    .preview-error-location {
+      margin-bottom: 12px;
+      font-family: monospace;
+      overflow-wrap: anywhere;
+    }
+
+    .preview-error-reason {
+      margin-bottom: 0;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    pre + .preview-error-reason {
+      margin-top: 12px;
+    }
+
+    pre {
+      margin-bottom: 0;
+      overflow: auto;
+      max-height: 55vh;
+    }
+  }
+
 @import '~@/assets/styles/var.less';
 
 .logo {

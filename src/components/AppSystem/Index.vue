@@ -2,6 +2,7 @@
   <div>
     <appearance-setting></appearance-setting>
     <language-setting></language-setting>
+    <sound-setting></sound-setting>
     <source-folder-setting></source-folder-setting>
     <version></version>
   </div>
@@ -12,12 +13,14 @@ import { Vue, Component } from 'vue-property-decorator'
 import AppearanceSetting from './includes/AppearanceSetting.vue'
 import LanguageSetting from './includes/LanguageSetting.vue'
 import SourceFolderSetting from './includes/SourceFolderSetting.vue'
+import SoundSetting from './includes/SoundSetting.vue'
 import Version from './includes/Version.vue'
 
 @Component({
   components: {
     AppearanceSetting,
     LanguageSetting,
+    SoundSetting,
     SourceFolderSetting,
     Version,
   },

@@ -29,7 +29,7 @@ Use package.json as the source for the full version without the leading `v`. Pre
 
 Starting with beta.4 and subsequent local Alpha builds, the in-app display keeps `vX.Y.Z-arm64.N` intact and separates the alpha/beta channel and its revision from the baseline with spaces, preserving dots within the numeric revision, for example `v0.9.3-arm64.1 beta 4` or `v0.9.3-arm64.1 alpha 3.1`. Package versions, Git tags and archive names keep the dotted format. Omit this display-only change from release notes.
 
-Write the Chinese and English notes in natural language. List the changes with Markdown `-` bullets in each language, then close with a short introduction to Gridea for ARM64 based on the previous release. Share both drafts with the maintainer for approval before publishing. Use GitHub’s pre-release setting to identify test builds.
+Write the Chinese and English notes in natural language. List the changes with Markdown `-` bullets in each language, then close with a short introduction to Gridea for ARM64 based on the previous release. In Chinese release notes, omit the final full stop (。) from each list item. Keep punctuation between sentences within the same item. Share both drafts with the maintainer for approval before publishing. Use GitHub’s pre-release setting to identify test builds.
 
 - Record the version and dependency audit for the exact release build.
 - Complete Developer ID/Hardened Runtime signing and notarization, or explicitly label the download as an unnotarized test build.

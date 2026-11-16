@@ -45,6 +45,22 @@ export default class Renderer extends Model {
     this.utils.moment = moment
   }
 
+  private async renderTemplate(file: string, data: Record<string, unknown>) {
+    try {
+      return await ejs.renderFile(file, data)
+    } catch (error) {
+      const diagnostic = error as { path?: string, message?: string }
+      const location = diagnostic.path || file
+      const message = diagnostic.message || String(error)
+      const detail = message.startsWith(location) ? message : `${location}\n${message}`
+      if (error instanceof ReferenceError) {
+        error.message = detail
+        throw error
+      }
+      throw new Error(detail)
+    }
+  }
+
   async preview(port: number) {
     this.db.themeConfig.domain = `http://localhost:${port}`
     await this.renderAll()
@@ -225,7 +241,7 @@ export default class Renderer extends Model {
       renderData.site.isHomepage = !archivePath
 
       fse.ensureDirSync(outputFolder)
-      const html = await ejs.renderFile(renderTemplatePath, renderData)
+      const html = await this.renderTemplate(renderTemplatePath, renderData)
       fs.writeFileSync(renderPath, html)
       return
     }
@@ -254,7 +270,7 @@ export default class Renderer extends Model {
         fse.ensureDirSync(urlJoin(this.outputDir, archivePath))
       }
 
-      const html = await ejs.renderFile(renderTemplatePath, renderData)
+      const html = await this.renderTemplate(renderTemplatePath, renderData)
 
       console.log('👏  PostList Page:', renderPath)
       fs.writeFileSync(renderPath, html)
@@ -291,7 +307,7 @@ export default class Renderer extends Model {
         commentSetting: this.db.commentSetting,
         site: this.siteData,
       }
-      const html = await ejs.renderFile(urlJoin(this.themePath, 'templates', 'post.ejs'), renderData)
+      const html = await this.renderTemplate(urlJoin(this.themePath, 'templates', 'post.ejs'), renderData)
 
       const renderFolerPath = urlJoin(this.outputDir, `${this.db.themeConfig.postPath}`, post.fileName)
       fse.ensureDirSync(renderFolerPath)
@@ -312,7 +328,7 @@ export default class Renderer extends Model {
       site: this.siteData,
     }
     fse.ensureDirSync(tagsFolder)
-    const html = await ejs.renderFile(urlJoin(this.themePath, 'templates', 'tags.ejs'), renderData)
+    const html = await this.renderTemplate(urlJoin(this.themePath, 'templates', 'tags.ejs'), renderData)
     console.log('👏  Tags Page:', renderPath)
     fs.writeFileSync(renderPath, html)
   }
@@ -372,7 +388,7 @@ export default class Renderer extends Model {
             : ''
         }
 
-        const html = await ejs.renderFile(urlJoin(this.themePath, 'templates', 'tag.ejs'), renderData)
+        const html = await this.renderTemplate(urlJoin(this.themePath, 'templates', 'tag.ejs'), renderData)
         console.log('👏  Tag Page:', renderPath)
         fs.writeFileSync(renderPath, html)
       }
@@ -422,7 +438,7 @@ export default class Renderer extends Model {
       }
 
       fse.ensureDirSync(renderFolder)
-      const html = await ejs.renderFile(urlJoin(this.themePath, 'templates', name), renderData)
+      const html = await this.renderTemplate(urlJoin(this.themePath, 'templates', name), renderData)
       fse.writeFileSync(renderPath, html)
       console.log('✅ Render custom page success', renderPath)
     }

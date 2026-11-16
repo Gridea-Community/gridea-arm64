@@ -1,5 +1,10 @@
+import { setPreviewSound } from './helpers/preview-sound'
+import fs from 'node:fs'
+import { createHash } from 'node:crypto'
+import { atomicWrite } from './helpers/atomic-file'
+import { isDraftSnapshot } from './helpers/draft-recovery'
 import recordProcessFailure from './helpers/process-diagnostics'
-import { grantFolder } from './helpers/file-access'
+import { assertDestination, assertImageAccess, grantFolder } from './helpers/file-access'
 import editorPermission from './helpers/editor-permissions'
 import ipcMain, { setTrustedWindow } from './helpers/trusted-ipc'
 import shell from './helpers/external-link'
@@ -15,6 +20,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { registerMediaProtocol, grantImage } from './helpers/media-protocol'
 
+ipcMain.on('app-preview-sound', (_event, value) => setPreviewSound(value))
 ipcMain.on('app-appearance', (_event, mode) => {
   if (['system', 'light', 'dark'].includes(mode)) nativeTheme.themeSource = mode
 })
@@ -41,6 +47,57 @@ ipcMain.handle('app-select-folder', async () => {
 })
 ipcMain.handle('app-open-external', (_event, url) => shell.openExternal(url))
 ipcMain.on('app-grant-image', (event, value) => { event.returnValue = grantImage(value) })
+ipcMain.on('app-draft-recovery', (event, site, article, operation, snapshot) => {
+  let result: unknown = false
+  try {
+    if (!currentApp || site !== currentApp.appDir || typeof article !== 'string' || article.length > 1024) {
+      event.returnValue = false
+      return
+    }
+    const profile = app.getPath('userData')
+    const directory = assertDestination(profile, path.join(profile, 'draft-recovery'))
+    const key = createHash('sha256').update(JSON.stringify([site, article])).digest('hex')
+    const file = assertDestination(profile, path.join(directory, `${key}.json`))
+    if (operation === 'read') {
+      result = null
+      if (fs.existsSync(file)) {
+        const saved = JSON.parse(fs.readFileSync(file, 'utf8'))
+        if (isDraftSnapshot(saved.snapshot)) {
+          const cover = saved.snapshot.featureImage.path
+          if (cover && typeof saved.authorizedCover === 'string') {
+            try {
+              if (fs.realpathSync(cover) === saved.authorizedCover) grantImage(saved.authorizedCover)
+            } catch {
+              // A missing cover must not prevent recovery of the article.
+            }
+          }
+          result = saved.snapshot
+        }
+      }
+    } else if (operation === 'remove') {
+      fs.rmSync(file, { force: true })
+      result = true
+    } else if (operation === 'write' && isDraftSnapshot(snapshot)) {
+      let authorizedCover: string | undefined
+      if (snapshot.featureType === 'DEFAULT' && snapshot.featureImage.path) {
+        try {
+          authorizedCover = assertImageAccess(snapshot.featureImage.path, [site])
+        } catch {
+          // Keep the draft even if its cover was moved or removed.
+        }
+      }
+      const content = JSON.stringify({ snapshot, authorizedCover })
+      if (Buffer.byteLength(content) <= 16 * 1024 * 1024) {
+        fs.mkdirSync(directory, { recursive: true, mode: 0o700 })
+        atomicWrite(file, content)
+        result = true
+      }
+    }
+  } catch (error) {
+    console.warn('Draft recovery storage failed:', error instanceof Error ? error.name : 'unknown error')
+  }
+  event.returnValue = result
+})
 ipcMain.on('app-refresh', () => {
   if (!quitting && win && !win.isDestroyed()) win.webContents.reload()
 })

@@ -1,5 +1,34 @@
 <template>
   <div class="article-update-page" :class="{ 'is-entering': entering }" v-if="visible" @mousemove="handlePageMousemove">
+    <a-modal
+      :visible="Boolean(recoveryDraft)"
+      :width="760"
+      :title="$t('draftRecoveryTitle')"
+      :okText="$t('draftRecoveryRestore')"
+      :cancelText="$t('draftRecoveryDiscard')"
+      :closable="false"
+      :maskClosable="false"
+      :keyboard="false"
+      @ok="restoreDraft"
+      @cancel="discardRecoveryDraft"
+    >
+      <p>{{ $t('draftRecoveryHint') }}</p>
+      <div v-if="recoveryChanges.length" class="draft-recovery-diff">
+        <section v-for="(change, index) in recoveryChanges" :key="index" class="draft-recovery-change">
+          <h3>{{ change.label }}</h3>
+          <div class="draft-recovery-columns">
+            <div>
+              <strong>{{ $t('saved') }}</strong>
+              <pre>{{ change.before || '—' }}</pre>
+            </div>
+            <div>
+              <strong>{{ $t('draftRecoveryUnsaved') }}</strong>
+              <pre>{{ change.after || '—' }}</pre>
+            </div>
+          </div>
+        </section>
+      </div>
+    </a-modal>
     <div class="page-title" ref="pageTitle">
       <a-row type="flex" justify="end">
         <a-tooltip placement="bottom" :title="String($t('back'))">
@@ -220,6 +249,7 @@ import {
 import { State } from 'vuex-class'
 import shortid from 'shortid'
 import moment from 'moment'
+import { draftTextChanges, DraftSnapshot, isDraftSnapshot } from '@/helpers/draft-recovery'
 import * as monaco from 'monaco-editor'
 import Prism from '@/helpers/prism'
 import { wordCount, timeCalc } from '../../helpers/words-count'
@@ -288,14 +318,105 @@ export default class ArticleUpdate extends Vue {
   featureType: 'DEFAULT' | 'EXTERNAL' = 'DEFAULT'
 
 
+  recoveryDraft: DraftSnapshot | null = null
+  private recoveryBaseline = ''
+  private recoverySite = ''
+  private recoveryTimer: number | undefined = undefined
+  private recoveryWarningShown = false
+  private saving = false
+
+  get draftSnapshot(): DraftSnapshot {
+    return {
+      title: this.form.title,
+      content: this.form.content,
+      fileName: this.form.fileName,
+      tags: [...this.form.tags],
+      date: this.form.date.format('YYYY-MM-DD HH:mm:ss'),
+      published: Boolean(this.form.published),
+      hideInList: Boolean(this.form.hideInList),
+      isTop: Boolean(this.form.isTop),
+      featureType: this.featureType,
+      featureImage: { ...this.form.featureImage },
+      featureImagePath: this.form.featureImagePath,
+      fileNameChanged: this.fileNameChanged,
+    }
+  }
+
+  get recoveryChanges() {
+    const draft = this.recoveryDraft
+    if (!draft) return []
+    const saved = this.draftSnapshot
+    const isNew = !this.originalFileName
+    const changes: Array<{ label: string, before: string, after: string }> = []
+    const add = (label: string, before: string, after: string) => {
+      if (before !== after) changes.push({ label, before, after })
+    }
+    const flag = (value: boolean) => value ? '✓' : '—'
+    const cover = (snapshot: DraftSnapshot) => snapshot.featureType === 'EXTERNAL'
+      ? snapshot.featureImagePath
+      : snapshot.featureImage.path
+    add(String(this.$t('title')), saved.title, draft.title)
+    for (const change of draftTextChanges(saved.content, draft.content)) {
+      changes.push({ label: String(this.$t('draftRecoveryBody')), ...change })
+    }
+    add('URL', isNew ? '' : saved.fileName, draft.fileName)
+    add(String(this.$t('tag')), saved.tags.join(', '), draft.tags.join(', '))
+    add(String(this.$t('createAt')), isNew ? '' : saved.date, draft.date)
+    add(String(this.$t('featureImage')), cover(saved), cover(draft))
+    add(String(this.$t('hideInList')), flag(saved.hideInList), flag(draft.hideInList))
+    add(String(this.$t('topArticles')), flag(saved.isTop), flag(draft.isTop))
+    add(String(this.$t('status')), String(this.$t(saved.published ? 'published' : 'draft')), String(this.$t(draft.published ? 'published' : 'draft')))
+    return changes
+  }
+
+  private scheduleRecovery() {
+    if (this.recoveryDraft) return
+    this.changedAfterLastSave = JSON.stringify(this.draftSnapshot) !== this.recoveryBaseline
+    window.clearTimeout(this.recoveryTimer)
+    this.recoveryTimer = window.setTimeout(() => this.persistRecovery(), 400)
+  }
+
+  private persistRecovery() {
+    window.clearTimeout(this.recoveryTimer)
+    if (this.recoveryDraft || !this.recoverySite) return
+    const snapshot = this.draftSnapshot
+    const dirty = JSON.stringify(snapshot) !== this.recoveryBaseline
+    const result = window.gridea.draftRecovery(this.recoverySite, this.originalFileName, dirty ? 'write' : 'remove', snapshot)
+    if (result === false && !this.recoveryWarningShown) {
+      this.recoveryWarningShown = true
+      this.$message.warning(String(this.$t('draftRecoveryWriteFailed')))
+    }
+  }
+
+  restoreDraft() {
+    const draft = this.recoveryDraft
+    if (!draft) return
+    const { featureType, fileNameChanged, date, ...fields } = draft
+    this.form = { ...this.form, ...fields, date: moment(date, 'YYYY-MM-DD HH:mm:ss', true) }
+    this.featureType = featureType
+    this.fileNameChanged = fileNameChanged
+    this.recoveryDraft = null
+    this.scheduleRecovery()
+  }
+
+  discardRecoveryDraft() {
+    if (window.gridea.draftRecovery(this.recoverySite, this.originalFileName, 'remove') !== true) {
+      this.$message.warning(String(this.$t('draftRecoveryWriteFailed')))
+      return
+    }
+    this.recoveryDraft = null
+  }
+
+  beforeDestroy() {
+    window.clearTimeout(this.recoveryTimer)
+    window.removeEventListener('pagehide', this.persistRecovery)
+  }
+
   postStatusTip = ''
 
   get dateLocale() {
     return this.$root.$i18n.locale === 'zhHans' ? 'zh-cn' : 'en-us'
   }
-
-  // 编辑文章时，当前文章的索引
-  currentPostIndex = -1
 
   originalFileName = ''
 
@@ -332,18 +453,22 @@ export default class ArticleUpdate extends Vue {
       this.normalSavePost()
     })
 
-    this.$watch('form', () => {
-      this.changedAfterLastSave = true
-    }, { deep: true })
+    this.recoverySite = this.site.appDir
+    this.recoveryBaseline = JSON.stringify(this.draftSnapshot)
+    const recovered = window.gridea.draftRecovery(this.recoverySite, this.originalFileName, 'read')
+    if (isDraftSnapshot(recovered) && moment(recovered.date, 'YYYY-MM-DD HH:mm:ss', true).isValid()) {
+      this.recoveryDraft = recovered
+    }
+    this.$watch('draftSnapshot', () => this.scheduleRecovery(), { deep: true })
+    window.addEventListener('pagehide', this.persistRecovery)
   }
 
   buildCurrentForm() {
     const { articleFileName } = this
     if (articleFileName) {
       this.fileNameChanged = true // 编辑文章标题时 URL 不跟随其变化
-      this.currentPostIndex = this.site.posts.findIndex((item: IPost) => item.fileName === articleFileName)
-      const currentPost = this.site.posts[this.currentPostIndex]
-      this.originalFileName = currentPost.fileName
+      const currentPost = this.site.posts.find((item: IPost) => item.fileName === articleFileName)
+      this.originalFileName = articleFileName
 
       if (currentPost) {
         this.form.title = currentPost.data.title
@@ -389,6 +514,7 @@ export default class ArticleUpdate extends Vue {
   }
 
   close() {
+    if (this.saving || this.recoveryDraft) return
     if (this.changedAfterLastSave) {
       this.$confirm({
         title: `${this.$t('warning')}`,
@@ -398,6 +524,8 @@ export default class ArticleUpdate extends Vue {
         cancelText: `${this.$t('cancel')}`,
         zIndex: 2000,
         onOk: () => {
+          window.clearTimeout(this.recoveryTimer)
+          window.gridea.draftRecovery(this.recoverySite, this.originalFileName, 'remove')
           this.$emit('close')
         },
       })
@@ -443,24 +571,7 @@ export default class ArticleUpdate extends Vue {
   }
 
   checkArticleUrlValid() {
-    const restPosts = JSON.parse(JSON.stringify(this.site.posts))
-    const foundPostIndex = restPosts.findIndex((post: IPost) => post.fileName === this.form.fileName)
-
-    if (foundPostIndex !== -1) {
-      if (this.currentPostIndex === -1) {
-        // 新增文章时文件名和其他文章文件名冲突
-        return false
-      }
-      restPosts.splice(this.currentPostIndex, 1)
-      const index = restPosts.findIndex((post: IPost) => post.fileName === this.form.fileName)
-      if (index !== -1) {
-        return false
-      }
-    }
-
-    this.currentPostIndex = this.currentPostIndex === -1 ? 0 : this.currentPostIndex
-
-    return true
+    return !this.site.posts.some(post => post.fileName === this.form.fileName && post.fileName !== this.originalFileName)
   }
 
   formatForm(published?: boolean) {
@@ -500,55 +611,47 @@ export default class ArticleUpdate extends Vue {
     return form
   }
 
-  saveDraft() {
-    if (!this.canSubmit) return
-    const form = this.formatForm(false)
+  private submitPost(published?: boolean, successMessage?: string) {
+    if (!this.canSubmit || this.saving || this.recoveryDraft) return
+    const form = this.formatForm(published)
+    if (!form) return
+    this.saving = true
+    const submitted = JSON.stringify(this.draftSnapshot)
+    const original = this.originalFileName
+    this.persistRecovery()
 
-    ipcRenderer.send('app-post-create', form)
-    ipcRenderer.once('app-post-created', (event: IpcRendererEvent, data: any) => {
+    ipcRenderer.once('app-post-created', (_event: IpcRendererEvent, data: any) => {
+      this.saving = false
       if (!data) {
-        this.$message.error('保存失败，请检查文件权限和文章 URL 后重试。')
+        this.$message.error(String(this.$t('saveError')))
         return
       }
+      const unchanged = JSON.stringify(this.draftSnapshot) === submitted
+      window.clearTimeout(this.recoveryTimer)
+      window.gridea.draftRecovery(this.recoverySite, original, 'remove')
+      this.originalFileName = form.fileName
+      this.form.published = form.published
+      this.recoveryBaseline = JSON.stringify({ ...JSON.parse(submitted), published: form.published })
       this.updatePostSavedStatus()
-      this.$message.success(`🎉  ${this.$t('draftSuccess')}`)
+      if (!unchanged) this.scheduleRecovery()
+      if (successMessage) this.$message.success(`🎉  ${this.$t(successMessage)}`)
       this.$emit('fetchData')
     })
+    ipcRenderer.send('app-post-create', form)
+  }
 
+  saveDraft() {
+    this.submitPost(false, 'draftSuccess')
     ga.event('Post', 'Post - click-save-draft', {})
   }
 
   savePost() {
-    if (!this.canSubmit) return
-    const form = this.formatForm(true)
-
-    ipcRenderer.send('app-post-create', form)
-    ipcRenderer.once('app-post-created', (event: IpcRendererEvent, data: any) => {
-      if (!data) {
-        this.$message.error('保存失败，请检查文件权限和文章 URL 后重试。')
-        return
-      }
-      this.updatePostSavedStatus()
-      this.$message.success(`🎉  ${this.$t('saveSuccess')}`)
-      this.$emit('fetchData')
-    })
-
+    this.submitPost(true, 'saveSuccess')
     ga.event('Post', 'Post - click-save-post', {})
   }
 
   normalSavePost() {
-    if (!this.canSubmit) return
-    const form = this.formatForm()
-
-    ipcRenderer.send('app-post-create', form)
-    ipcRenderer.once('app-post-created', (event: IpcRendererEvent, data: any) => {
-      if (!data) {
-        this.$message.error('保存失败，请检查文件权限和文章 URL 后重试。')
-        return
-      }
-      this.updatePostSavedStatus()
-      this.$emit('fetchData')
-    })
+    this.submitPost()
   }
 
   insertImage() {
@@ -661,6 +764,27 @@ export default class ArticleUpdate extends Vue {
 </script>
 
 <style lang="less" scoped>
+  .draft-recovery-diff {
+    max-height: 50vh;
+    overflow: auto;
+  }
+
+  .draft-recovery-change + .draft-recovery-change {
+    margin-top: 16px;
+  }
+
+  .draft-recovery-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+
+    pre {
+      margin: 4px 0 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+  }
+
 .upload-input {
   display: none;
 }

@@ -12,6 +12,12 @@ try {
   json.config.siteName='Fixture '+name
   fs.writeFileSync(file,JSON.stringify(json))
  }
+ if(process.env.GRIDEA_TEST_DRAFT_RECOVERY){
+  const posts=path.join(temp,'A','posts');
+  for(const name of fs.readdirSync(posts).filter(name=>name.endsWith('.md'))){
+   fs.appendFileSync(path.join(posts,name),'\nrecovery-marker-before\nrecovery-unchanged-context\n');
+  }
+ }
  fs.mkdirSync(path.join(temp,'.gridea'))
  fs.writeFileSync(path.join(temp,'.gridea/config.json'),JSON.stringify({sourceFolder:path.join(temp,'A')}))
  const harness=path.join(temp,'main.cjs')
@@ -38,7 +44,8 @@ app.once('browser-window-created',(_event,win)=>{
  });
  auditReady=debug.sendCommand('Audits.enable');
 });
-if(process.env.GRIDEA_TEST_LOCALIZATION) app.getLocale=()=> process.env.GRIDEA_TEST_SYSTEM_LOCALE || 'fr-CA';
+let mockedLocale=process.env.GRIDEA_TEST_SYSTEM_LOCALE || 'fr-CA';
+if(process.env.GRIDEA_TEST_LOCALIZATION) app.getLocale=()=>mockedLocale;
 const fs=require('node:fs'), path=require('node:path');
 const testHome=process.env.GRIDEA_TEST_HOME;
 if(process.env.GRIDEA_TEST_CLEAN_INSTALL){
@@ -66,6 +73,74 @@ app.whenReady().then(async()=>{
    clearTimeout(watchdog);app.quit();return;
   }
   await wait(()=>run("document.querySelector('#app')?.__vue__?.$store.state.site.appDir === "+JSON.stringify(process.env.GRIDEA_TEST_HOME+'/A')));
+  if(process.env.GRIDEA_DRAFT_TEST_PHASE){
+   const phase=process.env.GRIDEA_DRAFT_TEST_PHASE;
+   const fixture=path.join(testHome,'A');
+   const directory=path.join(testHome,'draft-recovery');
+   const view="function find(vm,key){if(typeof vm[key]==='function')return vm;for(const child of vm.$children){const match=find(child,key);if(match)return match}}const root=document.querySelector('#app').__vue__;";
+   const action=code=>run("(()=>{"+view+code+"})()");
+   const open=async mode=>{
+    await action("const articles=find(root,'newArticle');"+(mode==='new'?"articles.newArticle()":"articles.editPost(articles.site.posts[0])")+";return true");
+    await wait(()=>action("return Boolean(find(root,'restoreDraft'))"));
+   };
+   const files=()=>fs.existsSync(directory)?fs.readdirSync(directory).filter(name=>name.endsWith('.json')):[];
+   const names=fs.readdirSync(path.join(fixture,'posts')).filter(name=>name.endsWith('.md'));
+   const original=JSON.stringify(names.map(name=>[name,fs.readFileSync(path.join(fixture,'posts',name),'utf8')]));
+   const baselineFile=path.join(testHome,'original-posts.json');
+   const update=mode=>action("const editor=find(root,'restoreDraft');Object.assign(editor.form,{title:'Recovery "+mode+"',content:"+(mode==='existing'?"editor.form.content.replace('recovery-marker-before','**Unsaved existing**')":"'**Unsaved new**'")+",fileName:'recovery-"+mode+"',tags:['recovery'],hideInList:true,isTop:true,featureImagePath:'https://example.test/cover.png'});editor.form.date=editor.form.date.clone().year(2022);editor.featureType='EXTERNAL';editor.fileNameChanged=true;return true");
+   if(phase==='write'){
+    fs.writeFileSync(baselineFile,original);
+    await open('new');
+    await update('new');
+    await wait(()=>files().length===1);
+    await action("find(root,'newArticle').close();return true");
+    await wait(()=>action("return !find(root,'restoreDraft')"));
+    await open('existing');
+    await update('existing');
+    await wait(()=>files().length===2);
+    console.log('PASS both recovery snapshots flushed before forced app exit');
+    process.kill(process.pid,'SIGKILL');
+    return;
+   }
+   assert.equal(original,fs.readFileSync(baselineFile,'utf8'));
+   for(const mode of ['new','existing']){
+    await open(mode);
+    assert.equal(await action("return find(root,'restoreDraft').recoveryDraft.title"),'Recovery '+mode);
+    const comparison=await run("document.querySelector('.draft-recovery-diff').textContent");
+    assert.ok(comparison.includes('**Unsaved '+mode+'**'));
+    if(mode==='existing'){
+     assert.ok(comparison.includes('recovery-marker-before'));
+     assert.ok(!comparison.includes('recovery-unchanged-context'));
+    }
+    await action("find(root,'restoreDraft').restoreDraft();return true");
+    const restored=await action("return find(root,'restoreDraft').draftSnapshot");
+    assert.equal(restored.title,'Recovery '+mode);
+    assert.ok(restored.content.includes('**Unsaved '+mode+'**'));
+    if(mode==='existing')assert.ok(restored.content.includes('recovery-unchanged-context'));
+    assert.equal(restored.fileName,'recovery-'+mode);
+    assert.deepEqual(restored.tags,['recovery']);
+    assert.match(restored.date,/^2022-/);
+    assert.equal(restored.hideInList,true);
+    assert.equal(restored.isTop,true);
+    assert.equal(restored.featureType,'EXTERNAL');
+    assert.equal(restored.featureImagePath,'https://example.test/cover.png');
+    assert.equal(JSON.stringify(names.map(name=>[name,fs.readFileSync(path.join(fixture,'posts',name),'utf8')])),original);
+    if(mode==='new'){
+     await action("find(root,'newArticle').close();return true");
+     await wait(()=>action("return !find(root,'restoreDraft')"));
+     await open('new');
+     await action("find(root,'restoreDraft').discardRecoveryDraft();find(root,'newArticle').close();return true");
+     await wait(()=>action("return !find(root,'restoreDraft')"));
+     assert.equal(files().length,1);
+    }else{
+     await action("find(root,'restoreDraft').normalSavePost();return true");
+     await wait(()=>files().length===0);
+     assert.match(fs.readFileSync(path.join(fixture,'posts','recovery-existing.md'),'utf8'),/Unsaved existing/);
+    }
+   }
+   console.log('PASS new and existing article recovery after a full app kill, with changed-only comparison, discard and save cleanup');
+   clearTimeout(watchdog);app.quit();return;
+  }
   if(process.env.GRIDEA_EXPECTED_DISPLAY_VERSION){
    await run("document.querySelector('.ri-equalizer-line').click()");
    await wait(()=>run("document.body.textContent.includes("+JSON.stringify(process.env.GRIDEA_EXPECTED_DISPLAY_VERSION)+")"));
@@ -104,7 +179,7 @@ app.whenReady().then(async()=>{
    assert.equal(await readLanguage(),initialLanguage);
    await run("document.querySelector('.ri-equalizer-line').click()");
    await verify(languages.find(item=>item[0]===initialLanguage));
-   assert.equal(await run("document.querySelector('input[name=currentLanguage]:checked').value"),initialLanguage);
+   assert.equal(await run("document.querySelector('input[name=currentLanguage]:checked').value"),'system');
    console.log('PASS first launch follows',systemLocale,'in settings and menu');
    for(const language of languages){
     const key=language[0];
@@ -112,6 +187,17 @@ app.whenReady().then(async()=>{
     await verify(language);
     console.log('PASS localization',key);
    }
+   mockedLocale='ja-JP';
+   await run("window.dispatchEvent(new Event('focus'))");
+   assert.equal(await readLanguage(),'ru');
+   const pickLanguage=key=>run("(()=>{const radio=Array.from(document.querySelectorAll('input[name=currentLanguage]')).find(el=>el.value==="+JSON.stringify(key)+");radio.click();return new Promise(r=>setTimeout(()=>{radio.closest('form').querySelector('button').click();r(true)},0))})()");
+   await pickLanguage('system');
+   await verify(languages.find(item=>item[0]==='ja_JP'));
+   mockedLocale='en-GB';
+   await run("window.dispatchEvent(new Event('focus'))");
+   await verify(languages.find(item=>item[0]==='en'));
+   await pickLanguage('ru');
+   console.log('PASS manual language stays fixed and system mode follows locale changes');
    const loaded=new Promise(resolve=>win.webContents.once('did-finish-load',resolve));
    await run("window.gridea.send('app-refresh')");
    await loaded;
@@ -144,16 +230,30 @@ app.whenReady().then(async()=>{
     const result=await run("(async()=>{const site=document.querySelector('#app').__vue__.$store.state.site; const config={...site.themeConfig,themeName:"+JSON.stringify(theme)+"};const saved=await new Promise(r=>{window.gridea.receive('theme-saved',r,true);window.gridea.send('theme-save',config)}); if(!saved)throw Error('Theme save failed');await new Promise(r=>{window.gridea.receive('app-site-loaded',r,true);window.gridea.send('app-site-reload',{})});return await new Promise(r=>{window.gridea.receive('html-rendered',r,true);window.gridea.send('html-render')})})()");
     assert.equal(result.success,true,result.message);assert.ok(Number.isInteger(result.port));console.log('PASS packaged theme generation',theme);
   }
-  if(process.platform==='darwin')assert.deepEqual(previewSounds,Array(4).fill('/System/Library/Sounds/Glass.aiff'));
+  assert.deepEqual(previewSounds,[]);
+  await run("document.querySelector('.ri-equalizer-line').click()");
+  await wait(()=>run("Boolean(document.querySelector('.preview-sound-setting button'))"));
+  assert.equal(await run("document.querySelector('.preview-sound-setting button').classList.contains('ant-switch-checked')"),false);
+  await run("document.querySelector('.preview-sound-setting button').click()");
+  await wait(()=>run("localStorage.getItem('previewSound')==='true'"));
+  const soundReload=new Promise(resolve=>win.webContents.once('did-finish-load',resolve));
+  await run("window.gridea.send('app-refresh')");
+  await soundReload;
+  await wait(()=>run("Boolean(document.querySelector('.preview-btn'))"));
+  console.log('PASS preview sounds default off and saved preference survives reload');
   previewSounds.length=0;
   const previewURLs=[];
   shell.openExternal=async url=>{previewURLs.push(url)};
+  const checkChinesePreview=process.env.GRIDEA_TEST_PREVIEW_ZH==='1';
+  if(checkChinesePreview)await run("document.querySelector('#app').__vue__.$i18n.locale='zhHans'");
+  const undefinedDiagnostic=checkChinesePreview?'未定义':'не определена.';
   const themePath=path.join(target,'themes','simple');
   const styles=path.join(themePath,'assets','styles','main.less');
   const customPage=path.join(themePath,'templates','broken-preview.ejs');
   for(const [file,contents,diagnostic] of [
-   [styles,'.broken { color: ;', 'main.less'],
+   [styles,'.broken { color: ;', 'Unrecognised input'],
    [customPage,'<% throw new Error("broken-preview-fixture") %>','broken-preview-fixture'],
+   ...(process.env.GRIDEA_TEST_LOCALIZATION ? [[customPage,'<%= post.feature %> '+ 'long line '.repeat(200),undefinedDiagnostic]] : []),
   ]){
    const previous=fs.existsSync(file)?fs.readFileSync(file):null;
    try{
@@ -161,10 +261,29 @@ app.whenReady().then(async()=>{
     win.blur();
     assert.equal(win.isFocused(),false);
     await run("document.querySelector('.preview-btn').click()");
-    await wait(()=>run("Array.from(document.querySelectorAll('.ant-modal pre')).some(el=>el.textContent.includes("+JSON.stringify(diagnostic)+"))"));
+    await wait(()=>run("Array.from(document.querySelectorAll('.ant-modal .preview-error-reason')).some(el=>el.textContent.includes("+JSON.stringify(diagnostic)+"))"));
     assert.equal(win.isFocused(),false);
     assert.equal(previewURLs.length,0);
-    await run("Array.from(document.querySelectorAll('.ant-modal')).find(el=>el.querySelector('pre')?.textContent.includes("+JSON.stringify(diagnostic)+")).querySelector('.ant-modal-close').click()");
+    const detail=await run("Array.from(document.querySelectorAll('.ant-modal .preview-error-reason')).find(el=>el.textContent.includes("+JSON.stringify(diagnostic)+")).textContent");
+    const modalSelector="Array.from(document.querySelectorAll('.ant-modal')).find(el=>el.querySelector('.preview-error-reason')?.textContent.includes("+JSON.stringify(diagnostic)+"))";
+    assert.ok((await run(modalSelector+".querySelector('.preview-error-location').textContent")).includes(file));
+    assert.equal(await run("Boolean("+modalSelector+".querySelector('details'))"),false);
+    if(diagnostic===undefinedDiagnostic){
+     assert.ok(await run(modalSelector+".querySelector('pre').textContent.includes('post.feature')"));
+     const scroll=await run("(()=>{const modal="+modalSelector+"; const code=modal.querySelector('pre'); const reason=modal.querySelector('.preview-error-reason'); const before=reason.getBoundingClientRect().left; code.scrollLeft=code.scrollWidth; return {offset:code.scrollLeft,stationary:reason.getBoundingClientRect().left===before,inside:code.contains(reason)}})()");
+     assert.ok(scroll.offset>0);
+     assert.equal(scroll.stationary,true);
+     assert.equal(scroll.inside,false);
+     const name=String.fromCharCode(96)+'post'+String.fromCharCode(96);
+     assert.equal(detail.trim().split(String.fromCharCode(10)).pop(),checkChinesePreview?'变量 '+name+' 未定义':'Переменная '+name+' не определена.');
+    }
+
+    if(checkChinesePreview){
+     assert.equal(await run(modalSelector+".querySelector('h2 + p').textContent"),'请根据错误详情检查主题模板或样式，修正后再试');
+    }
+    assert.ok(await run("parseFloat(getComputedStyle("+modalSelector+".querySelector('.preview-error-details')).marginTop)>0"));
+    assert.ok(await run("parseFloat(getComputedStyle("+modalSelector+".querySelector('.preview-error-location')).marginBottom)>0"));
+    await run("Array.from(document.querySelectorAll('.ant-modal')).find(el=>el.querySelector('.preview-error-reason')?.textContent.includes("+JSON.stringify(diagnostic)+")).querySelector('.ant-modal-close').click()");
     console.log('PASS preview error shown without refocusing:',diagnostic);
    }finally{
     if(previous===null)fs.unlinkSync(file);
@@ -176,7 +295,7 @@ app.whenReady().then(async()=>{
   assert.match(previewURLs[0],/^http:\\/\\/localhost:[0-9]+$/);
   console.log('PASS preview succeeds after fixing the broken theme');
   if(process.platform==='darwin'){
-   assert.deepEqual(previewSounds,['/System/Library/Sounds/Basso.aiff','/System/Library/Sounds/Basso.aiff','/System/Library/Sounds/Glass.aiff']);
+   assert.deepEqual(previewSounds,[...Array(process.env.GRIDEA_TEST_LOCALIZATION ? 3 : 2).fill('/System/Library/Sounds/Basso.aiff'),'/System/Library/Sounds/Glass.aiff']);
    console.log('PASS distinct macOS sounds for preview failure and success');
   }
   await run("document.querySelector('#app').__vue__.$router.push('/articles').then(()=>true,()=>true)");
@@ -200,7 +319,11 @@ app.whenReady().then(async()=>{
  }catch(e){console.error(e);app.exit(1)}
 });
 `)
- const result=spawnSync(require(path.join(root,'node_modules/electron')), [harness],{env:{...process.env,GRIDEA_TEST_HOME:temp,GRIDEA_SWITCH_BUILD:build},encoding:'utf8',timeout:60000})
- console.log((result.stdout||'').split('\n').filter(s=>s.includes('PASS') || s.startsWith('MEMORY')).join('\n'))
- if(result.status!==0){console.error((result.stdout||'').slice(-6000));console.error((result.stderr||'').slice(-2500));throw Error('Switch test failed '+result.status)}
+ const phases=process.env.GRIDEA_TEST_DRAFT_RECOVERY ? ['write','recover'] : [''];
+ for(const phase of phases){
+  const result=spawnSync(require(path.join(root,'node_modules/electron')), [harness],{env:{...process.env,GRIDEA_TEST_HOME:temp,GRIDEA_SWITCH_BUILD:build,GRIDEA_DRAFT_TEST_PHASE:phase},encoding:'utf8',timeout:60000});
+  console.log((result.stdout||'').split('\n').filter(s=>s.includes('PASS') || s.startsWith('MEMORY')).join('\n'));
+  const passed=phase==='write' ? result.signal==='SIGKILL' && (result.stdout||'').includes('snapshots flushed') : result.status===0;
+  if(!passed){console.error((result.stdout||'').slice(-6000));console.error((result.stderr||'').slice(-2500));throw Error('Package test failed '+result.status)}
+ }
 } finally {fs.rmSync(temp,{recursive:true,force:true})}

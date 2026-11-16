@@ -1,8 +1,10 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
-const sendChannels = new Set(['app-appearance', 'app-language', 'app-post-create', 'app-post-delete', 'app-post-list-delete', 'app-refresh', 'app-site-reload', 'app-source-folder-setting', 'avatar-upload', 'comment-setting-save', 'favicon-upload', 'html-render', 'image-upload', 'menu-delete', 'menu-save', 'menu-sort', 'remote-detect', 'setting-save', 'site-publish', 'tag-delete', 'tag-save', 'theme-custom-config-save', 'theme-save'])
+const sendChannels = new Set(['app-preview-sound', 'app-appearance', 'app-language', 'app-post-create', 'app-post-delete', 'app-post-list-delete', 'app-refresh', 'app-site-reload', 'app-source-folder-setting', 'avatar-upload', 'comment-setting-save', 'favicon-upload', 'html-render', 'image-upload', 'menu-delete', 'menu-save', 'menu-sort', 'remote-detect', 'setting-save', 'site-publish', 'tag-delete', 'tag-save', 'theme-custom-config-save', 'theme-save'])
 const receiveChannels = new Set(['click-menu-save', 'app-post-created', 'app-post-deleted', 'app-post-list-deleted', 'app-site-loaded', 'app-source-folder-set', 'avatar-uploaded', 'comment-setting-saved', 'favicon-uploaded', 'html-rendered', 'image-uploaded', 'menu-deleted', 'menu-saved', 'menu-sorted', 'remote-detected', 'setting-saved', 'site-published', 'tag-deleted', 'tag-saved', 'theme-custom-config-saved', 'theme-saved'])
 contextBridge.exposeInMainWorld('gridea', {
+  draftRecovery: (site: string, article: string, operation: string, snapshot?: unknown) =>
+    ipcRenderer.sendSync('app-draft-recovery', site, article, operation, snapshot),
   locale: () => ipcRenderer.sendSync('app-locale'),
   send(channel: string, ...args: any[]) {
     if (!sendChannels.has(channel)) throw new Error('Unsupported application command')

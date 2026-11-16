@@ -1,6 +1,6 @@
-import { execFile } from 'node:child_process'
 import { IpcMainEvent } from 'electron'
 import ipcMain from '../../helpers/trusted-ipc'
+import { playResultSound } from '../../helpers/preview-sound'
 import Renderer from '../renderer'
 
 export default class RendererEvents {
@@ -10,16 +10,11 @@ export default class RendererEvents {
     ipcMain.removeAllListeners('html-render')
 
     ipcMain.on('html-render', async (event: IpcMainEvent) => {
-      const reply = (result: { success: boolean, port?: number, serverUnavailable?: boolean, message?: string }) => {
+      const reply = (result: { success: boolean, port?: number, serverUnavailable?: boolean, message?: string, undefinedVariable?: string }) => {
         if (event.sender.isDestroyed()) return
         event.sender.send('html-rendered', result)
 
-        if (process.platform === 'darwin') {
-          const sound = result.success ? 'Glass' : 'Basso'
-          execFile('/usr/bin/afplay', [`/System/Library/Sounds/${sound}.aiff`], { timeout: 5000 }, () => {
-            // Sound playback is optional and must not affect the preview result.
-          })
-        }
+        playResultSound(result.success)
       }
       try {
         const port = appInstance.previewServer.get('port')
@@ -32,7 +27,10 @@ export default class RendererEvents {
         reply({ success: true, port })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
-        reply({ success: false, message })
+        const undefinedVariable = error instanceof ReferenceError
+          ? /(?:^|\n)([$_\p{ID_Start}][$\p{ID_Continue}]*) is not defined$/u.exec(message)?.[1]
+          : undefined
+        reply({ success: false, message, undefinedVariable })
       }
     })
   }

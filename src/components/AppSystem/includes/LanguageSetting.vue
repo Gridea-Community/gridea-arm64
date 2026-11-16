@@ -4,6 +4,7 @@
     <a-form>
       <a-form-item :labelCol="formLayout.label" :wrapperCol="formLayout.wrapper" :colon="false">
         <a-radio-group name="currentLanguage" v-model="currentLanguage">
+          <a-radio value="system">{{ $t('appearanceSystem') }}</a-radio>
           <a-radio value="zhHans">简体中文</a-radio>
           <a-radio value="en">English</a-radio>
           <a-radio value="zh_HK">繁體中文（香港）</a-radio>
@@ -22,6 +23,8 @@
 
 <script lang="ts">
 import { Vue, Component } from 'vue-property-decorator'
+import { isAppLanguage, systemLanguage } from '@/helpers/app-language'
+import { ipcRenderer } from '@/helpers/renderer-bridge'
 
 @Component
 export default class System extends Vue {
@@ -30,15 +33,18 @@ export default class System extends Vue {
     wrapper: { span: 12 },
   }
 
-  currentLanguage = 'zhHans'
+  currentLanguage = 'system'
 
   mounted() {
-    this.currentLanguage = this.$i18n.locale
+    const saved = localStorage.getItem('language')
+    this.currentLanguage = isAppLanguage(saved) ? saved : 'system'
   }
 
   saveLanguage() {
     localStorage.setItem('language', this.currentLanguage)
-    this.$root.$i18n.locale = this.currentLanguage
+    this.$root.$i18n.locale = this.currentLanguage === 'system'
+      ? systemLanguage(ipcRenderer.sendSync('app-locale') || '')
+      : this.currentLanguage
   }
 }
 </script>

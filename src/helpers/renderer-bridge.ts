@@ -1,10 +1,12 @@
 export { default as markdown } from '../server/plugins/markdown'
 export { default as createSlug } from './slug'
+import type { DraftSnapshot } from './draft-recovery'
 import type { IpcRendererEvent } from 'electron'
 export type { IpcRendererEvent } from 'electron'
 
 type Listener = (event: IpcRendererEvent, ...args: any[]) => void
 interface GrideaBridge {
+  draftRecovery(site: string, article: string, operation: 'read' | 'write' | 'remove', snapshot?: DraftSnapshot): DraftSnapshot | boolean | null
   locale(): string
   send(channel: string, ...args: any[]): void
   invoke(channel: string, ...args: any[]): Promise<any>

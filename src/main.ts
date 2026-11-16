@@ -48,7 +48,13 @@ function applyLanguage(value: string) {
   ipcRenderer.send('app-language', value)
 }
 
+ipcRenderer.send('app-preview-sound', localStorage.getItem('previewSound') === 'true')
 applyLanguage(initialLanguage)
+window.addEventListener('focus', () => {
+  if (!isAppLanguage(localStorage.getItem('language'))) {
+    i18n.locale = systemLanguage(ipcRenderer.sendSync('app-locale') || '')
+  }
+})
 
 Prism.highlightAll()
 
