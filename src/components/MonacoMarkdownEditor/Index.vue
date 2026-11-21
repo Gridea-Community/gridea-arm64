@@ -44,6 +44,8 @@ export default class MonacoMarkdownEditor extends Vue {
 
     this.editor = monaco.editor.create(this.$el as HTMLElement, {
       language: 'markdown-math',
+      ariaLabel: String(this.$t('draftRecoveryBody')),
+      accessibilitySupport: 'auto',
       value: this.value,
       fontSize: 15,
       theme: document.documentElement.dataset.theme === 'dark' ? 'vs-dark' : 'GrideaLight',
@@ -106,6 +108,11 @@ export default class MonacoMarkdownEditor extends Vue {
     const lines = this.$el.querySelectorAll('.view-line') as NodeListOf<HTMLElement>
     if (!lines.length) return
     lines[0].classList.toggle('input-holder', lines.length === 1 && !lines[0].innerText.trim())
+  }
+
+  @Watch('$i18n.locale')
+  updateAccessibleLabel() {
+    this.editor?.updateOptions({ ariaLabel: String(this.$t('draftRecoveryBody')) })
   }
 
   @Watch('value')

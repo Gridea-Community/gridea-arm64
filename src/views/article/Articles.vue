@@ -17,12 +17,12 @@
           v-if="searchInputVisible"
         />
         <a-tooltip placement="bottom" :title="$t('searchArticle')">
-          <div class="op-btn" @click="searchInputVisible = true" v-if="!keyword && !searchInputVisible">
+          <div class="op-btn" role="button" :aria-label="String($t('searchArticle'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)" @click="searchInputVisible = true" v-if="!keyword && !searchInputVisible">
             <i class="zwicon-search"></i>
           </div>
         </a-tooltip>
         <a-tooltip placement="bottom" :title="$t('newArticle')">
-          <div class="op-btn" tabindex="0" @click="newArticle">
+          <div class="op-btn" role="button" :aria-label="String($t('newArticle'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)" @click="newArticle">
             <i class="zwicon-plus"></i>
           </div>
         </a-tooltip>
@@ -38,10 +38,10 @@
         >
           <div class="p-4 flex-1 flex">
             <div class="flex flex-shrink-0 items-center pr-4">
-              <a-checkbox @click.stop="() => {}" :checked="selectedPost.includes(post)" @change="onSelectChange(post)"></a-checkbox>
+              <a-checkbox :aria-label="String($t('select')) + ' ' + post.data.title" @click.stop="() => {}" :checked="selectedPost.includes(post)" @change="onSelectChange(post)"></a-checkbox>
             </div>
             <div class="flex-1">
-              <a class="post-title block text-base text-gray-700 mb-2">{{ post.data.title }}</a>
+              <a role="button" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)" class="post-title block text-base text-gray-700 mb-2">{{ post.data.title }}</a>
               <div class="text-xs flex items-center text-gray-300">
                 <div class="text-xs flex items-center mr-2">
                   <div class="rounded-full w-1 h-1 mr-1" :class="{ 'bg-green-500': post.data.published, 'bg-gray-500': !post.data.published }"></div>
@@ -65,7 +65,7 @@
             </div>
           </div>
 
-          <img v-if="post.data.feature" :src="$localURL(post.data.feature)" class="feature-img" />
+          <img alt="" v-if="post.data.feature" :src="$localURL(post.data.feature)" class="feature-img" />
 
           <div class="absolute right-0 top-0 -mt-px -mr-px flex">
             <div v-if="post.data.hideInList" class="text-xs flex items-center px-2 rounded-b rounded-br-none bg-gray-800 text-white">
@@ -115,6 +115,12 @@ import ga from '../../helpers/analytics'
   },
 })
 export default class Articles extends Vue {
+  activateControl(event: KeyboardEvent) {
+    if (event.repeat) return
+    const target = event.currentTarget
+    if (target instanceof HTMLElement) target.click()
+  }
+
   @State('site') site!: any
 
   articleUpdateVisible = false

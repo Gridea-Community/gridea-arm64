@@ -38,3 +38,5 @@ Write the Chinese and English notes in natural language. List the changes with M
 - Publish application archives, checksums and installation notes separately from the source.
 
 The visible application name is Gridea for ARM64. The old preview data folder and bundle identifier remain deliberately compatible. The public repository is https://github.com/Gridea-Community/gridea-arm64. Binary releases are explicitly marked as pre-releases until broader acceptance is complete.
+
+After the corresponding Beta release has been published and its uploaded assets verified, delete local Alpha build artifacts (App, ZIP and checksums). Preserve source history and shared dependencies.

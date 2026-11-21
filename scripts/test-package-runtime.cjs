@@ -22,7 +22,7 @@ try {
  fs.writeFileSync(path.join(temp,'.gridea/config.json'),JSON.stringify({sourceFolder:path.join(temp,'A')}))
  const harness=path.join(temp,'main.cjs')
  fs.writeFileSync(harness,`
-const {app,BrowserWindow,dialog,Menu,shell}=require('electron'), assert=require('assert/strict');
+const {app,BrowserWindow,dialog,Menu,shell,screen}=require('electron'), assert=require('assert/strict');
 process.on('uncaughtException',error=>{console.error(error);app.exit(1)});
 let target; dialog.showOpenDialog=async options=>{assert.equal(options.defaultPath,process.env.GRIDEA_TEST_HOME);return {canceled:false,filePaths:[target]}};
 const watchdog=setTimeout(()=>app.exit(1),45000);
@@ -59,6 +59,10 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));
 app.whenReady().then(async()=>{
  try{
   const win=BrowserWindow.getAllWindows()[0];
+  const bounds=win.getBounds(), area=screen.getDisplayMatching(bounds).workArea;
+  assert.ok(Math.abs(bounds.x-(area.x+(area.width-bounds.width)/2))<=1);
+  assert.ok(Math.abs(bounds.y-(area.y+(area.height-bounds.height)/2))<=1);
+  console.log('PASS startup window is centered in the display work area');
   await auditReady;
   assert.equal(win.webContents.getLastWebPreferences().sandbox,true);
   const run=s=>win.webContents.executeJavaScript(s);
@@ -73,6 +77,46 @@ app.whenReady().then(async()=>{
    clearTimeout(watchdog);app.quit();return;
   }
   await wait(()=>run("document.querySelector('#app')?.__vue__?.$store.state.site.appDir === "+JSON.stringify(process.env.GRIDEA_TEST_HOME+'/A')));
+  if(process.env.GRIDEA_TEST_UPDATE){
+   let payload=[],responseCode=200,requests=0;
+   const debug=win.webContents.debugger;
+   debug.on('message',(_event,method,params)=>{
+    if(method==='Fetch.requestPaused'){
+     requests++;
+     debug.sendCommand('Fetch.fulfillRequest',{requestId:params.requestId,responseCode,responseHeaders:[{name:'Content-Type',value:'application/json'},{name:'Access-Control-Allow-Origin',value:'*'}],body:Buffer.from(JSON.stringify(payload)).toString('base64')}).catch(console.error);
+    }
+   });
+   await debug.sendCommand('Fetch.enable',{patterns:[{urlPattern:'https://api.github.com/repos/Gridea-Community/gridea-arm64/releases*'}]});
+   await run("document.querySelector('.ri-equalizer-line').click()");
+   const clickCheck=()=>run("Array.from(document.querySelectorAll('button')).find(el=>el.textContent.trim()===document.querySelector('#app').__vue__.$t('checkUpdates')).click()");
+   const status=()=>run("Array.from(document.querySelectorAll('[role=status]')).map(el=>el.textContent).join(' ')");
+   const translated=key=>run("document.querySelector('#app').__vue__.$t("+JSON.stringify(key)+")");
+   await wait(()=>run("Array.from(document.querySelectorAll('button')).some(el=>el.textContent.trim()===document.querySelector('#app').__vue__.$t('checkUpdates'))"));
+   await clickCheck();
+   await wait(async()=>String(await status()).includes(await translated('noUpdateAvailable')));
+   console.log('PASS update check no-update feedback');
+   payload=[{tag_name:'v0.9.3-arm64.1.beta.7',prerelease:true,body:'- Fixture update <script>unsafe</script>',assets:[{name:'Gridea-for-ARM64-0.9.3-arm64.1.beta.7.zip'}]}];
+   await clickCheck();
+   await wait(()=>run("Array.from(document.querySelectorAll('.ant-modal h3')).some(el=>el.textContent==='v0.9.3-arm64.1.beta.7')"));
+   assert.equal(await run("Boolean(document.querySelector('.release-notes script'))"),false);
+   const opened=[];shell.openExternal=async url=>{opened.push(url)};
+   await run("document.querySelector('.release-notes').parentElement.querySelector('button').click()");
+   await wait(()=>opened.length===1);
+   assert.equal(opened[0],'https://github.com/Gridea-Community/gridea-arm64/releases/tag/v0.9.3-arm64.1.beta.7');
+   await run("document.querySelector('.release-notes').closest('.ant-modal').querySelector('.ant-modal-close').click()");
+   console.log('PASS Beta update dialog, safe release text and project release destination');
+   responseCode=403;payload={message:'Forbidden'};
+   await clickCheck();await wait(async()=>String(await status()).includes(await translated('updateCheckFailed')));
+   responseCode=403;payload={message:'API rate limit exceeded'};
+   await clickCheck();await wait(async()=>String(await status()).includes(await translated('updateCheckLimited')));
+   responseCode=429;payload={message:'rate limited'};
+   await clickCheck();await wait(async()=>String(await status()).includes(await translated('updateCheckLimited')));
+   responseCode=500;payload={message:'failure'};
+   await clickCheck();await wait(async()=>String(await status()).includes(await translated('updateCheckFailed')));
+   assert.equal(requests,6);
+   console.log('PASS update rate limit and network failure feedback; retry remains available');
+   clearTimeout(watchdog);app.quit();return;
+  }
   if(process.env.GRIDEA_DRAFT_TEST_PHASE){
    const phase=process.env.GRIDEA_DRAFT_TEST_PHASE;
    const fixture=path.join(testHome,'A');
@@ -299,8 +343,14 @@ app.whenReady().then(async()=>{
    console.log('PASS distinct macOS sounds for preview failure and success');
   }
   await run("document.querySelector('#app').__vue__.$router.push('/articles').then(()=>true,()=>true)");
-  await run("(()=>{function find(vm){if(typeof vm.newArticle==='function')return vm;for(const child of vm.$children){const found=find(child);if(found)return found}}find(document.querySelector('#app').__vue__).newArticle();return true})()");
+  assert.equal(await run("document.querySelector('.articles-page .post-title').getAttribute('role')"),'button');
+  await run("Array.from(document.querySelectorAll('.articles-page [role=button]')).find(el=>el.getAttribute('aria-label')===document.querySelector('#app').__vue__.$t('newArticle')).click()");
   await wait(()=>run("!!document.querySelector('.monaco-editor textarea')"));
+  assert.equal(await run("document.querySelector('.article-update-page .save-btn').getAttribute('aria-disabled')"),'true');
+  assert.ok(await run("document.querySelector('.article-update-page .save-btn').getAttribute('aria-label')"));
+  assert.ok(await run("document.querySelector('.monaco-editor textarea').getAttribute('aria-label').includes(document.querySelector('#app').__vue__.$t('draftRecoveryBody'))"));
+  assert.equal(await run("document.querySelector('[role=status][aria-live=polite]').textContent"),await run("document.querySelector('#app').__vue__.$t('renderSuccess')"));
+  console.log('PASS named article/editor controls, unavailable save state and preview live announcement');
   await run("(()=>{function find(vm){if(typeof vm.previewPost==='function')return vm;for(const child of vm.$children){const found=find(child);if(found)return found}}const editor=find(document.querySelector('#app').__vue__);editor.form.content='**Bold** :smile:';editor.previewPost();return true})()");
   await wait(()=>run("Array.from(document.querySelectorAll('strong')).some(el=>el.textContent==='Bold' && el.parentElement.textContent.includes('😄'))"));
   assert.equal(await run("window.gridea.localURL('file:///tmp/A%20B.png?v=42')"),'app-media://file/image?path=%2Ftmp%2FA%20B.png&v=42');

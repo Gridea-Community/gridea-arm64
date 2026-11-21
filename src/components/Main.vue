@@ -1,12 +1,13 @@
 <template>
   <a-layout>
+    <span class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ announcement }}</span>
     <a-layout-sider
       class="sider"
       :style="{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0 }"
     >
       <div class="top-container">
         <div class="logo">
-          <img class="img" src="@/assets/logo.png">
+          <img alt="Gridea" class="img" src="@/assets/logo.png">
         </div>
         <a-menu mode="inline" :defaultSelectedKeys="['/articles']" @click="clickMenu">
           <a-menu-item :key="menu.router" v-for="menu in sideMenus">
@@ -35,7 +36,7 @@
             {{ $t('syncSite') }}
           </template>
         </a-button>
-        <div class="version-container" :class="{ 'version-dot': hasUpdate }">
+        <div class="version-container">
           <i class="ri-equalizer-line text-base" @click="systemModalVisible = true"></i>
           <i class="ri-earth-line web-btn" @click="goWeb" v-if="site.setting.domain"></i>
           <a-tooltip :title="`🌟 ${$t('starSupport')}`">
@@ -56,13 +57,7 @@
       🙁 {{ $t('syncError1') }} <a @click="openInBrowser('https://gridea.dev/')">FAQ</a> {{ $t('or') }} <a @click="openInBrowser('https://github.com/getgridea/gridea/issues')">Issues</a> {{ $t('syncError2') }}
     </a-modal>
 
-    <a-modal title="🔥 New Version" :visible="updateModalVisible" :footer="null" @cancel="updateModalVisible = false" :maskClosable="false">
-      <div class="download-container">
-        👉 <a href="https://gridea.dev">Gridea Homepage</a> | <a href="https://github.com/getgridea/gridea/releases">Github Releases</a> 👈
-      </div>
-      <h2>{{ newVersion }}</h2>
-      <div class="version-info" v-html="updateContent"></div>
-    </a-modal>
+
 
     <!-- <a-modal :width="900" :visible="systemModalVisible" :footer="null" @cancel="systemModalVisible = false">
       <app-system />
@@ -96,13 +91,10 @@
 import shell from '@/helpers/renderer-link'
 import { ipcRenderer, IpcRendererEvent, } from '@/helpers/renderer-bridge'
 import { Vue, Component } from 'vue-property-decorator'
-import axios from 'axios'
 import { State, Action } from 'vuex-class'
 import AppSystem from './AppSystem/Index.vue'
 import ISnackbar from '../interfaces/snackbar'
 import { Site } from '../store/modules/site'
-import pkg from '../../package.json'
-import { markdown } from '@/helpers/renderer-bridge'
 import ga from '../helpers/analytics'
 
 @Component({
@@ -117,25 +109,22 @@ export default class App extends Vue {
 
   ipcRenderer = ipcRenderer
 
-  version = (pkg as any).version
 
   drawer = true
+
+  announcement = ''
 
   previewLoading = false
 
   publishLoading = false
 
-  hasUpdate = false
 
-  newVersion = ''
 
   syncErrorModalVisible = false
 
-  updateModalVisible = false
 
   systemModalVisible = false
 
-  updateContent = ''
 
   logModalVisible = false
 
@@ -237,6 +226,7 @@ export default class App extends Vue {
 
   public preview() {
     if (this.previewLoading || this.publishLoading) return
+    this.announcement = ''
     this.previewLoading = true
     ga.event('Preview', 'Preview - start', { evLabel: this.site.setting.domain })
 
@@ -248,11 +238,13 @@ export default class App extends Vue {
           message: result.message || '',
           undefinedVariable: result.undefinedVariable || '',
         }
+        this.announcement = String(this.$t('previewFailed'))
         this.logModalVisible = true
         return
       }
 
       ga.event('Preview', 'Preview - success', { evLabel: this.site.setting.domain })
+      this.announcement = String(this.$t('renderSuccess'))
       this.$message.success(`🎉  ${this.$t('renderSuccess')}`)
       this.openInBrowser(`http://localhost:${result.port}`)
     })
@@ -272,6 +264,7 @@ export default class App extends Vue {
       return false
     }
 
+    this.announcement = ''
     ipcRenderer.send('site-publish')
     this.publishLoading = true
 
@@ -280,10 +273,12 @@ export default class App extends Vue {
     ipcRenderer.once('site-published', (event: IpcRendererEvent, result: any) => {
       console.log(result)
       if (result.success) {
+        this.announcement = String(this.$t('syncSuccess'))
         this.$message.success(`🎉  ${this.$t('syncSuccess')}`)
 
         ga.event('Publish', 'Publish - success', { evLabel: this.site.setting.domain })
       } else {
+        this.announcement = String(this.$t('syncError1'))
         this.syncErrorModalVisible = true
 
         ga.event('Publish', 'Publish - failed', { evLabel: this.site.setting.domain })
@@ -310,31 +305,7 @@ export default class App extends Vue {
     this.openInBrowser('https://github.com/getgridea/gridea')
   }
 
-  public async checkUpdate() {
-    const res = await axios.get('https://api.github.com/repos/getgridea/gridea/releases/latest')
-    if (res.status === 200) {
-      this.newVersion = res.data.name
-      const latestVersion = res.data.name.substring(1).split('.').map((item: string) => parseInt(item, 10))
-      const currentVersion = this.version.split('.').map((item: string) => parseInt(item, 10))
-      this.updateContent = markdown.render(res.data.body)
 
-      for (let i = 0; i < currentVersion.length; i += 1) {
-        if (currentVersion[i] > latestVersion[i]) {
-          this.hasUpdate = false
-          break
-        }
-        if (currentVersion[i] < latestVersion[i]) {
-          this.hasUpdate = true
-          break
-        }
-      }
-
-      if (this.hasUpdate) {
-        // this.$message.success(`🔥  ${this.$t('newVersionTips')}`, 8)
-        this.updateModalVisible = true
-      }
-    }
-  }
 }
 </script>
 

@@ -9,7 +9,7 @@ import editorPermission from './helpers/editor-permissions'
 import ipcMain, { setTrustedWindow } from './helpers/trusted-ipc'
 import shell from './helpers/external-link'
 import {
-  app, protocol, BrowserWindow, Menu, dialog, nativeTheme,
+  app, protocol, BrowserWindow, Menu, dialog, nativeTheme, screen,
 } from 'electron'
 import createProtocol from './helpers/protocol'
 import App from './server/app'
@@ -162,6 +162,13 @@ function createWindow() {
   }
 
   const createdWindow = new BrowserWindow(winOption)
+  // Use the display under the pointer when opening a new window.
+  const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  const [windowWidth, windowHeight] = createdWindow.getSize()
+  createdWindow.setPosition(
+    Math.round(workArea.x + (workArea.width - windowWidth) / 2),
+    Math.round(workArea.y + (workArea.height - windowHeight) / 2),
+  )
   win = createdWindow
   createdWindow.once('ready-to-show', () => {
     if (!quitting && win === createdWindow && !createdWindow.isDestroyed()) createdWindow.show()

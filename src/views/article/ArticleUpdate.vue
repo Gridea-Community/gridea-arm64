@@ -32,17 +32,17 @@
     <div class="page-title" ref="pageTitle">
       <a-row type="flex" justify="end">
         <a-tooltip placement="bottom" :title="String($t('back'))">
-          <div class="op-btn" role="button" :aria-label="String($t('back'))" tabindex="0" @keydown.enter="close" @click="close">
+          <div class="op-btn" role="button" :aria-label="String($t('back'))" tabindex="0" @click="close" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)">
             <i class="zwicon-arrow-left"></i>
           </div>
         </a-tooltip>
         <a-tooltip placement="bottom" :title="$t('saveDraft')">
-          <div class="op-btn" tabindex="0" :class="{ 'disabled': !canSubmit }" @click="saveDraft">
+          <div class="op-btn" tabindex="0" :class="{ 'disabled': !canSubmit }" @click="saveDraft" role="button" :aria-label="String($t('saveDraft'))" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)" :aria-disabled="!canSubmit || saving || Boolean(recoveryDraft)">
             <i class="zwicon-checkmark"></i>
           </div>
         </a-tooltip>
         <a-tooltip placement="bottom" :title="$t('save')">
-          <div class="op-btn save-btn" tabindex="0" :class="{ 'disabled': !canSubmit }" @click="savePost">
+          <div class="op-btn save-btn" tabindex="0" :class="{ 'disabled': !canSubmit }" @click="savePost" role="button" :aria-label="String($t('save'))" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)" :aria-disabled="!canSubmit || saving || Boolean(recoveryDraft)">
             <i class="zwicon-checkmark"></i>
           </div>
         </a-tooltip>
@@ -50,7 +50,7 @@
     </div>
     <div class="page-content">
       <div class="editor-wrapper">
-        <a-input class="post-title" size="large" :placeholder="$t('title')" v-model="form.title" @change="handleTitleChange" @keydown="handleInputKeydown"></a-input>
+        <a-input :aria-label="String($t('title'))" class="post-title" size="large" :placeholder="$t('title')" v-model="form.title" @change="handleTitleChange" @keydown="handleInputKeydown"></a-input>
         <monaco-markdown-editor
           ref="monacoMarkdownEditor"
           v-model="form.content"
@@ -76,7 +76,7 @@
                 </div>
               </div>
             </template>
-            <div class="op-btn" @click="handleInfoClick">
+            <div class="op-btn" @click="handleInfoClick" role="button" :aria-label="String($t('postInfo'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)">
               <i class="zwicon-info-circle"></i>
             </div>
           </a-popover>
@@ -84,27 +84,27 @@
             <template slot="content">
               <EmojiCard @select="handleEmojiSelect" />
             </template>
-            <div class="op-btn" @click="handleEmojiClick">
+            <div class="op-btn" @click="handleEmojiClick" role="button" :aria-label="String($t('insertEmoji'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)">
               <i class="zwicon-smile"></i>
             </div>
           </a-popover>
           <a-tooltip placement="left" :title="$t('insertImage')">
-            <div class="op-btn" @click="insertImage">
+            <div class="op-btn" @click="insertImage" role="button" :aria-label="String($t('insertImage'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)">
               <i class="zwicon-image"></i>
             </div>
           </a-tooltip>
           <a-tooltip placement="left" :title="$t('insertMore')">
-            <div class="op-btn" @click="insertMore">
+            <div class="op-btn" @click="insertMore" role="button" :aria-label="String($t('insertMore'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)">
               <i class="zwicon-more-v"></i>
             </div>
           </a-tooltip>
           <a-tooltip placement="left" :title="$t('postSettings')">
-            <div class="op-btn" @click="handlePostSettingClick">
+            <div class="op-btn" @click="handlePostSettingClick" role="button" :aria-label="String($t('postSettings'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)">
               <i class="zwicon-cog"></i>
             </div>
           </a-tooltip>
           <a-tooltip placement="left" :title="`${$t('preview')} [Ctrl + P]`">
-            <div class="op-btn" v-shortkey="['ctrl', 'p']" @shortkey="shortPreviewPost" @click="previewPost">
+            <div class="op-btn" v-shortkey="['ctrl', 'p']" @shortkey="shortPreviewPost" @click="previewPost" role="button" :aria-label="String($t('preview'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)">
               <i class="zwicon-eye"></i>
             </div>
           </a-tooltip>
@@ -131,7 +131,7 @@
                 </div>
               </div>
             </template>
-            <div class="op-btn">
+            <div class="op-btn" role="button" :aria-label="String($t('keyboardShortcuts'))" tabindex="0" @keydown.enter.prevent="activateControl($event)" @keydown.space.prevent="activateControl($event)">
               <i class="zwicon-keyboard"></i>
             </div>
           </a-popover>
@@ -270,6 +270,12 @@ import ga from '../../helpers/analytics'
   },
 })
 export default class ArticleUpdate extends Vue {
+  activateControl(event: KeyboardEvent) {
+    if (event.repeat) return
+    const target = event.currentTarget
+    if (target instanceof HTMLElement) target.click()
+  }
+
   @Prop(Boolean) visible!: boolean
 
   @Prop(String) articleFileName!: string
