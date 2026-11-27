@@ -10,7 +10,7 @@ This preview is based on Gridea 0.9.3.
 
 ## Build from source
 
-Requires Apple Silicon macOS 13+, Node.js 22+, pnpm 10.20.0 and Python 3. First installation needs network access for dependencies and Electron.
+Requires Apple Silicon macOS 13+, Node.js 22.12+, pnpm 10.20.0 and Python 3. First installation needs network access for dependencies and Electron.
 
 ```sh
 pnpm install --frozen-lockfile

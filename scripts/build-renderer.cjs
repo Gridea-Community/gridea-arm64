@@ -18,7 +18,10 @@ compiler.run((error, stats) => {
     for (const module of stats.compilation.modules) collect(module)
     const forbidden = [...resources].filter(file => /node_modules\/(?:@vue\/compiler-[^/]+|vue-template-compiler)\//.test(file) || /node_modules\/vue\/dist\/vue\.(?!runtime\.)/.test(file))
     const runtimeOnly = [...resources].filter(file => file.endsWith('/vue/dist/vue.runtime.esm.js'))
-    fs.writeFileSync(path.join(root, 'dist_electron/renderer-module-audit.json'), JSON.stringify({ runtimeOnly, forbidden }, null, 2))
+    const monacoResources = [...resources].filter(file => file.includes('/monaco-editor/'))
+    const invalidMonaco = monacoResources.filter(file => file.includes('/monaco-editor/min/') || file.includes('/external/monaco-lsp-client/') || file.includes('/languages/features/'))
+    fs.writeFileSync(path.join(root, 'dist_electron/renderer-module-audit.json'), JSON.stringify({ runtimeOnly, forbidden, monacoResources, invalidMonaco }, null, 2))
+    if (invalidMonaco.length) { console.error('Unexpected second editor or unused language services', invalidMonaco); process.exitCode = 1; return }
     if (forbidden.length || !runtimeOnly.length) {
       console.error('Renderer must contain the runtime-only Vue build and no template compiler', forbidden)
       process.exitCode = 1

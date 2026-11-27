@@ -27,7 +27,6 @@ declare module 'v-emoji-picker'
 declare module 'vue-shortkey'
 
 declare module 'easy-ftp'
-declare module 'node-ssh'
 
 declare module 'vuedraggable' {
   

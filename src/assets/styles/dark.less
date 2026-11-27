@@ -163,8 +163,10 @@ html[data-theme='dark'] {
   .has-warning .ant-form-explain { color: var(--gridea-accent); }
   .ant-form-item-label > label, .ant-modal-confirm-title, .ant-modal-confirm-content,
   .ant-form-text, .ant-select-dropdown-menu-item-group-title { color: var(--gridea-text) !important; }
-  .ant-upload.ant-upload-select-picture-card { background: #252528; border-color: #53535d; }
-  .ant-upload.ant-upload-select-picture-card:hover { border-color: var(--gridea-accent); }
+  .ant-upload.ant-upload-select-picture-card { background: #252528 !important; border-color: #53535d !important; color: var(--gridea-text) !important; }
+  .ant-upload.ant-upload-select-picture-card .upload-icon,
+  .ant-upload.ant-upload-select-picture-card .anticon { color: var(--gridea-text) !important; }
+  .ant-upload.ant-upload-select-picture-card:hover { border-color: var(--gridea-accent) !important; }
   .ant-upload-text, .ant-empty-description { color: var(--gridea-muted); }
   .ant-table-placeholder, .ant-table-thead > tr > th { background: #252528 !important; border-color: var(--gridea-border) !important; }
   .ant-table-tbody > tr:hover > td, .ant-table-row-selected > td { background: #333338 !important; }
@@ -184,6 +186,20 @@ html[data-theme='dark'] {
   .monaco-editor .action-menu-item:hover { color: #f4d978 !important; background: #45402d !important; }
   .monaco-editor .scrollbar .slider { background: #575760 !important; }
   .monaco-editor .scroll-decoration { box-shadow: none !important; }
+  // Shortcut help is rendered in a body-level popover, outside the editor DOM.
+  .keyboard-tip { color: #b1b1bc; }
+  .keyboard-container {
+    color: var(--gridea-text);
+    .keyboard-group-title {
+      color: var(--gridea-text) !important;
+      &::before, &::after { border-top-color: var(--gridea-border) !important; }
+    }
+    .list-item {
+      border-bottom-color: var(--gridea-border) !important;
+      &:hover { background: #37373d !important; color: var(--gridea-accent) !important; }
+      code { background: #37373d !important; color: #ededf0 !important; }
+    }
+  }
   .post-title.ant-input { background: transparent !important; }
   .preview-container blockquote { border-color: #6c6c77; color: #b8b8c4; }
   .preview-container table td, .preview-container table th { border-color: #50505b; }

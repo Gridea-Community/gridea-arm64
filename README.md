@@ -10,7 +10,7 @@ Gridea for ARM64 是原版 Gridea 的社区维护版本，可以在搭载 Apple 
 
 ## 从源码构建
 
-需要 Apple Silicon Mac、macOS 13+、Node.js 22+、pnpm 10.20.0 和 Python 3。首次安装需要联网下载依赖和 Electron。
+需要 Apple Silicon Mac、macOS 13+、Node.js 22.12+、pnpm 10.20.0 和 Python 3。首次安装需要联网下载依赖和 Electron。
 
 ```sh
 pnpm install --frozen-lockfile

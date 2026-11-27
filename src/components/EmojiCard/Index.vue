@@ -1,15 +1,14 @@
 <template>
   <div class="emoji-card">
-    <VEmojiPicker :pack="pack" :showSearch="false" :emojisByRow="8" @select="handleSelect" />
+    <VEmojiPicker :showSearch="false" :emojisByRow="8" :emojiSize="40" :emojiWithBorder="false" @select="handleSelect" />
   </div>
 </template>
 
 <script lang="ts">
 import {
-  Vue, Component, Prop, Watch, Model,
+  Vue, Component,
 } from 'vue-property-decorator'
-import VEmojiPicker from 'v-emoji-picker'
-import packData from 'v-emoji-picker/data/emojis.json'
+import { VEmojiPicker } from 'v-emoji-picker'
 
 @Component({
   components: {
@@ -17,10 +16,8 @@ import packData from 'v-emoji-picker/data/emojis.json'
   },
 })
 export default class EmojiCard extends Vue {
-  pack = Array.isArray(packData) ? packData : (packData as any).data
-
-  handleSelect(emojiData: any) {
-    this.$emit('select', emojiData.emoji)
+  handleSelect(emojiData: { data: string }) {
+    this.$emit('select', emojiData.data)
   }
 }
 </script>
@@ -56,17 +53,22 @@ export default class EmojiCard extends Vue {
     background-color: #eee;
     opacity: 0.7;
   }
+  #Emojis {
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  }
   .emoji {
+    font-size: 25px !important;
     cursor: default;
     width: 40px;
     height: 40px;
-    line-height: 44px;
+    line-height: 44px !important;
     padding: 0;
     border-radius: 8px;
     transition: all 0.3s ease;
     max-height: none;
     &:hover {
       background: #efefef;
+      transform: none;
     }
   }
   #VSvg {

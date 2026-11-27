@@ -1,0 +1,153 @@
+{
+  "paths": [
+    {
+      "args": [
+        "https://example.test/blog/",
+        "/post/",
+        "中文 空格",
+        "/"
+      ],
+      "expected": "https://example.test/blog/post/中文 空格/"
+    },
+    {
+      "args": [
+        "http://localhost:4000",
+        "post",
+        "hello",
+        "/"
+      ],
+      "expected": "http://localhost:4000/post/hello/"
+    },
+    {
+      "args": [
+        "/tmp/fixture with spaces",
+        "themes",
+        "simple"
+      ],
+      "expected": "/tmp/fixture with spaces/themes/simple"
+    },
+    {
+      "args": [
+        "https://example.test/blog",
+        "archives",
+        "page",
+        "2/"
+      ],
+      "expected": "https://example.test/blog/archives/page/2/"
+    },
+    {
+      "args": [
+        "https://example.test",
+        "/"
+      ],
+      "expected": "https://example.test/"
+    },
+    {
+      "args": [
+        "https://example.test/blog/",
+        "",
+        "images",
+        "avatar.png"
+      ],
+      "expected": "https://example.test/blog/images/avatar.png"
+    },
+    {
+      "args": [
+        "file:///tmp/site",
+        "post-images",
+        "图.png"
+      ],
+      "expected": "file:///tmp/site/post-images/图.png"
+    },
+    {
+      "args": [
+        "https://example.test",
+        "post",
+        "a%20b",
+        "/"
+      ],
+      "expected": "https://example.test/post/a%20b/"
+    },
+    {
+      "args": [
+        "https://example.test",
+        "?a=1",
+        "&b=2"
+      ],
+      "expected": "https://example.test?a=1&b=2"
+    },
+    {
+      "args": [
+        "https://example.test/blog",
+        "atom.xml"
+      ],
+      "expected": "https://example.test/blog/atom.xml"
+    }
+  ],
+  "files": [
+    {
+      "name": ".DS_Store",
+      "keep": false
+    },
+    {
+      "name": "._image.png",
+      "keep": false
+    },
+    {
+      "name": "npm-debug.log",
+      "keep": false
+    },
+    {
+      "name": ".file.swp",
+      "keep": false
+    },
+    {
+      "name": "Icon\r",
+      "keep": false
+    },
+    {
+      "name": "__MACOSX",
+      "keep": false
+    },
+    {
+      "name": "Thumbs.db",
+      "keep": false
+    },
+    {
+      "name": "desktop.ini",
+      "keep": true
+    },
+    {
+      "name": "hello.md",
+      "keep": true
+    },
+    {
+      "name": "中文.md",
+      "keep": true
+    },
+    {
+      "name": "notes.md~",
+      "keep": false
+    },
+    {
+      "name": ".gitignore",
+      "keep": true
+    },
+    {
+      "name": "theme.json",
+      "keep": true
+    },
+    {
+      "name": "post-images",
+      "keep": true
+    },
+    {
+      "name": ".Spotlight-V100",
+      "keep": false
+    },
+    {
+      "name": ".Trashes",
+      "keep": false
+    }
+  ]
+}

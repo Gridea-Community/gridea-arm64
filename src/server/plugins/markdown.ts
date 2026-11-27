@@ -8,7 +8,7 @@ import MarkdownItSub from 'markdown-it-sub'
 import MarkdownItAbbr from 'markdown-it-abbr'
 import MarkdownItFootnote from 'markdown-it-footnote'
 import MarkdownItImsize from 'markdown-it-imsize'
-import MarkdownItEmoji from 'markdown-it-emoji'
+import { full as MarkdownItEmoji } from 'markdown-it-emoji'
 import MarkdownItImplicitFigures from 'markdown-it-implicit-figures'
 
 const markdownIt = new MarkdownIt({

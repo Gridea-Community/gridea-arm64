@@ -291,18 +291,7 @@ export default class App {
   }
 
   private updateStaticServer(): void {
-    function removeMiddleware(route: any, i: number, routes: any) {
-      if (route.handle.name === 'serveStatic') {
-        routes.splice(i, 1)
-        console.log('Preview server: Removed old static route')
-      }
-    }
-    const routers = this.previewServer._router // eslint-disable-line no-underscore-dangle
-    if (routers) {
-      const routesStack = routers.stack
-      routesStack.forEach(removeMiddleware)
-    }
-    this.previewServer.use(express.static(`${this.buildDir}`))
+    this.previewServer.locals.grideaPreviewStatic = express.static(this.buildDir)
     console.log(`Preview server: Static dir change to ${this.buildDir}`)
   }
 

@@ -932,6 +932,7 @@ export default class ArticleUpdate extends Vue {
 
 .upload-img {
   width: 80px;
+  margin: 0 auto;
 }
 .upload-icon {
   font-size: 18px;

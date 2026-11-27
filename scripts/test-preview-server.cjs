@@ -4,6 +4,8 @@ const { EventEmitter } = require('events')
 const attempts = []
 const app = {
   settings: {},
+  locals: {},
+  use(handler) { this.middleware = handler },
   set(key, value) { this.settings[key] = value },
   listen(port, host) {
     const server = new EventEmitter()
@@ -17,6 +19,15 @@ const exportsObject = {}
 const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/server.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, esModuleInterop: true } }).outputText
 vm.runInNewContext(code, { exports: exportsObject, console: { log() {}, error() {} }, require: name => { if (name === 'express') return () => app; return require(name) } })
 const service = exportsObject.default()
+let served = ''
+app.middleware({}, {}, () => { served = 'fallback' })
+assert.equal(served, 'fallback')
+app.locals.grideaPreviewStatic = () => { served = 'site A' }
+app.middleware({}, {}, () => {})
+assert.equal(served, 'site A')
+app.locals.grideaPreviewStatic = () => { served = 'site B' }
+app.middleware({}, {}, () => {})
+assert.equal(served, 'site B')
 attempts[0].server.emit('error', { code: 'EADDRINUSE' })
 assert.deepEqual(attempts.map(item => item.port), [4000, 4001])
 assert.equal(attempts[1].host, '127.0.0.1')

@@ -1,0 +1,16 @@
+--- a/lib/tableFormatter.js
++++ b/lib/tableFormatter.js
+@@ -26,8 +26,13 @@
+ 
+ function _createClass(Constructor, protoProps, staticProps) { if (protoProps) _defineProperties(Constructor.prototype, protoProps); if (staticProps) _defineProperties(Constructor, staticProps); return Constructor; }
+ 
++var registeredFormattingLanguages = new Set();
++
+ function activateTableFormatter(editor) {
++  // Providers use the requested model, not an editor instance. Register once per language.
++  if (registeredFormattingLanguages.has(editor.languageId)) return;
+   _monacoEditor.languages.registerDocumentFormattingEditProvider(editor.languageId, new MarkdownDocumentFormatter());
++  registeredFormattingLanguages.add(editor.languageId);
+ }
+ 
+ function deactivate() {}

@@ -11,7 +11,7 @@ module.exports = {
   mode: 'production', target: ['web', 'es2020'],
   entry: path.join(root, 'src/main.ts'),
   output: { path: path.join(root, 'dist_electron/bundled'), filename: 'js/[name].[contenthash:8].js', chunkFilename: 'js/[name].[contenthash:8].js', publicPath: './', assetModuleFilename: 'assets/[name].[contenthash:8][ext]' },
-  resolve: { extensions: ['.ts', '.js', '.vue', '.json'], alias: { '@': path.join(root, 'src'), vue$: 'vue/dist/vue.runtime.esm.js' } },
+  resolve: { extensions: ['.ts', '.js', '.vue', '.json'], alias: { '@': path.join(root, 'src'), vue$: 'vue/dist/vue.runtime.esm.js', 'monaco-editor$': path.join(root, 'src/helpers/monaco.ts'), 'monaco-editor/base': path.join(root, 'node_modules/monaco-editor/esm/vs/base') } },
   module: { rules: [
     { test: /\.vue$/, loader: 'vue-loader' },
     { test: /\.ts$/, exclude: /node_modules/, loader: 'ts-loader', options: { transpileOnly: true, appendTsSuffixTo: [/\.vue$/] } },

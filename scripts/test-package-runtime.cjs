@@ -2,6 +2,8 @@ const fs = require('fs'), path = require('path'), os = require('os'), {spawnSync
 const root = path.resolve(__dirname, '..')
 if (!process.argv[2]) throw new Error('Pass the packaged .app path')
 const build = path.resolve(process.argv[2], 'Contents/Resources/app/background.js')
+const appVersion = JSON.parse(fs.readFileSync(path.join(path.dirname(build), 'package.json'), 'utf8')).version
+const appDisplayVersion = 'v' + appVersion.replace(/^(\d+\.\d+\.\d+-arm64\.\d+)\.(alpha|beta)\.(.+)$/, '$1 $2 $3')
 if (!fs.existsSync(build)) throw new Error('Complete pnpm build:arm64 before running the site-switch test')
 const temp = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'gridea-site-switch-')))
 try {
@@ -11,6 +13,10 @@ try {
   const file=path.join(dir,'config/theme.json'), json=JSON.parse(fs.readFileSync(file))
   json.config.siteName='Fixture '+name
   fs.writeFileSync(file,JSON.stringify(json))
+ }
+ if(process.env.GRIDEA_TEST_MONACO){
+  for(const file of fs.readdirSync(path.join(temp,'A','posts')).filter(name=>name.endsWith('.md'))) fs.appendFileSync(path.join(temp,'A','posts',file),'\n\n$x^2$\n');
+  for(const file of fs.readdirSync(path.join(temp,'B','posts')).filter(name=>name.endsWith('.md'))) fs.appendFileSync(path.join(temp,'B','posts',file),'\n\n$x^2$\n');
  }
  if(process.env.GRIDEA_TEST_DRAFT_RECOVERY){
   const posts=path.join(temp,'A','posts');
@@ -25,7 +31,7 @@ try {
 const {app,BrowserWindow,dialog,Menu,shell,screen}=require('electron'), assert=require('assert/strict');
 process.on('uncaughtException',error=>{console.error(error);app.exit(1)});
 let target; dialog.showOpenDialog=async options=>{assert.equal(options.defaultPath,process.env.GRIDEA_TEST_HOME);return {canceled:false,filePaths:[target]}};
-const watchdog=setTimeout(()=>app.exit(1),45000);
+const watchdog=setTimeout(()=>{console.error('Runtime test exceeded 45 seconds');app.exit(1)},45000);
 const childProcess=require('node:child_process');
 const execFile=childProcess.execFile;
 const previewSounds=[];
@@ -37,6 +43,8 @@ childProcess.execFile=(file,...args)=>{
 const issues=[];
 let auditReady;
 app.once('browser-window-created',(_event,win)=>{
+ // Keep automation timers deterministic when another app covers the test window.
+ win.webContents.setBackgroundThrottling(false);
  const debug=win.webContents.debugger;
  debug.attach();
  debug.on('message',(_event,method,params)=>{
@@ -273,10 +281,26 @@ app.whenReady().then(async()=>{
   for(const theme of ['fly','notes','paper','simple']){
     const result=await run("(async()=>{const site=document.querySelector('#app').__vue__.$store.state.site; const config={...site.themeConfig,themeName:"+JSON.stringify(theme)+"};const saved=await new Promise(r=>{window.gridea.receive('theme-saved',r,true);window.gridea.send('theme-save',config)}); if(!saved)throw Error('Theme save failed');await new Promise(r=>{window.gridea.receive('app-site-loaded',r,true);window.gridea.send('app-site-reload',{})});return await new Promise(r=>{window.gridea.receive('html-rendered',r,true);window.gridea.send('html-render')})})()");
     assert.equal(result.success,true,result.message);assert.ok(Number.isInteger(result.port));console.log('PASS packaged theme generation',theme);
+    const response=await fetch('http://localhost:'+result.port+'/');
+    assert.equal(response.status,200);
+    const siteName=JSON.parse(fs.readFileSync(path.join(target,'config/theme.json'),'utf8')).config.siteName;
+    assert.ok((await response.text()).includes(siteName));
+    const atom=await fetch('http://localhost:'+result.port+'/atom.xml');assert.equal(atom.status,200);
+    const atomXML=await atom.text();assert.ok(atomXML.includes('http://www.w3.org/2005/Atom'));assert.ok(atomXML.includes(siteName));
+    console.log('PASS packaged HTTP preview and Atom feed',theme);
+    if(process.env.GRIDEA_TEST_MONACO){
+      const mathAssets=path.join(process.env.GRIDEA_TEST_HOME,'.gridea/output/assets/gridea-katex');
+      assert.ok(fs.readFileSync(path.join(mathAssets,'katex.min.css'),'utf8').includes('KaTeX'));
+      assert.ok(fs.readdirSync(path.join(mathAssets,'fonts')).some(file=>file.endsWith('.woff2')));
+      console.log('PASS packaged matching KaTeX CSS and local fonts',theme);
+    }
   }
   assert.deepEqual(previewSounds,[]);
   await run("document.querySelector('.ri-equalizer-line').click()");
   await wait(()=>run("Boolean(document.querySelector('.preview-sound-setting button'))"));
+  assert.equal(await run("(()=>{function find(vm){if(typeof vm.checkUpdate==='function')return vm;for(const child of vm.$children){const found=find(child);if(found)return found}}return find(document.querySelector('#app').__vue__).version})()"),${JSON.stringify(appDisplayVersion)});
+  assert.ok(await run("document.body.textContent.includes("+${JSON.stringify(JSON.stringify(appDisplayVersion))}+")"));
+  console.log('PASS packaged in-app version display',${JSON.stringify(appDisplayVersion)});
   assert.equal(await run("document.querySelector('.preview-sound-setting button').classList.contains('ant-switch-checked')"),false);
   await run("document.querySelector('.preview-sound-setting button').click()");
   await wait(()=>run("localStorage.getItem('previewSound')==='true'"));
@@ -342,26 +366,69 @@ app.whenReady().then(async()=>{
    assert.deepEqual(previewSounds,[...Array(process.env.GRIDEA_TEST_LOCALIZATION ? 3 : 2).fill('/System/Library/Sounds/Basso.aiff'),'/System/Library/Sounds/Glass.aiff']);
    console.log('PASS distinct macOS sounds for preview failure and success');
   }
+  if(process.env.GRIDEA_TEST_MONACO) await run("window.__grideaWorkerCheck={started:[],ready:[],errors:[]};window.Worker=class extends Worker{constructor(...args){super(...args);window.__grideaWorkerCheck.started.push(args[1]?.name||String(args[0]));this.addEventListener('message',event=>{if(event.data?.type==='vscode-worker-ready')window.__grideaWorkerCheck.ready.push(args[1]?.name)});this.addEventListener('error',event=>window.__grideaWorkerCheck.errors.push(event.message||'Worker failed'))}};true");
   await run("document.querySelector('#app').__vue__.$router.push('/articles').then(()=>true,()=>true)");
   assert.equal(await run("document.querySelector('.articles-page .post-title').getAttribute('role')"),'button');
   await run("Array.from(document.querySelectorAll('.articles-page [role=button]')).find(el=>el.getAttribute('aria-label')===document.querySelector('#app').__vue__.$t('newArticle')).click()");
-  await wait(()=>run("!!document.querySelector('.monaco-editor textarea')"));
+  await wait(()=>run("!!document.querySelector('.monaco-editor [role=textbox][aria-label]')"));
   assert.equal(await run("document.querySelector('.article-update-page .save-btn').getAttribute('aria-disabled')"),'true');
   assert.ok(await run("document.querySelector('.article-update-page .save-btn').getAttribute('aria-label')"));
-  assert.ok(await run("document.querySelector('.monaco-editor textarea').getAttribute('aria-label').includes(document.querySelector('#app').__vue__.$t('draftRecoveryBody'))"));
+  assert.ok(await run("document.querySelector('.monaco-editor [role=textbox][aria-label]').getAttribute('aria-label').includes(document.querySelector('#app').__vue__.$t('draftRecoveryBody'))"));
   assert.equal(await run("document.querySelector('[role=status][aria-live=polite]').textContent"),await run("document.querySelector('#app').__vue__.$t('renderSuccess')"));
   console.log('PASS named article/editor controls, unavailable save state and preview live announcement');
+  if(process.env.GRIDEA_TEST_MONACO) console.log(await run(${JSON.stringify('(' + require('./fixtures/monaco-runtime.cjs').toString() + ')()')}));
+  if(process.env.GRIDEA_TEST_SHORTCUT_COLORS){
+    const cssDebug=win.webContents.debugger;await cssDebug.sendCommand('DOM.enable');await cssDebug.sendCommand('CSS.enable');
+    for(const mode of ['light','dark']){
+      const result=await run("("+${JSON.stringify(require('./fixtures/shortcut-colors-runtime.cjs').toString())}+")("+JSON.stringify(mode)+")");
+      const dom=await cssDebug.sendCommand('DOM.getDocument');const row=await cssDebug.sendCommand('DOM.querySelector',{nodeId:dom.root.nodeId,selector:'.keyboard-container .list-item'});
+      await cssDebug.sendCommand('CSS.forcePseudoState',{nodeId:row.nodeId,forcedPseudoClasses:['hover']});await delay(350);
+      const hovered=await run("getComputedStyle(document.querySelector('.keyboard-container .list-item')).backgroundColor");
+      assert.equal(hovered,mode==='dark'?'rgb(55, 55, 61)':'rgb(255, 255, 240)');
+      if(process.env.GRIDEA_SHORTCUT_SCREENSHOTS){fs.mkdirSync(process.env.GRIDEA_SHORTCUT_SCREENSHOTS,{recursive:true});fs.writeFileSync(path.join(process.env.GRIDEA_SHORTCUT_SCREENSHOTS,mode+'.png'),(await win.webContents.capturePage()).toPNG())}
+      console.log('PASS shortcut colors, contrast and hover',JSON.stringify(result));
+      await cssDebug.sendCommand('CSS.forcePseudoState',{nodeId:row.nodeId,forcedPseudoClasses:[]});
+    }
+    await run("Array.from(document.querySelectorAll('[aria-label]')).find(el=>el.getAttribute('aria-label')===document.querySelector('#app').__vue__.$t('keyboardShortcuts')).click();true");
+  }
+  if(process.env.GRIDEA_TEST_UPLOAD_COLORS){
+    const cssDebug=win.webContents.debugger;await cssDebug.sendCommand('DOM.enable');await cssDebug.sendCommand('CSS.enable');
+    for(const mode of ['light','dark']){
+      const result=await run("("+${JSON.stringify(require('./fixtures/upload-colors-runtime.cjs').toString())}+")("+JSON.stringify(mode)+")");
+      const dom=await cssDebug.sendCommand('DOM.getDocument');const card=await cssDebug.sendCommand('DOM.querySelector',{nodeId:dom.root.nodeId,selector:'.feature-uploader .ant-upload-select-picture-card'});
+      await cssDebug.sendCommand('CSS.forcePseudoState',{nodeId:card.nodeId,forcedPseudoClasses:['hover']});await delay(350);
+      if(mode==='dark'){console.log('Upload hover state',await run("JSON.stringify({theme:document.documentElement.dataset.theme,cards:Array.from(document.querySelectorAll('.feature-uploader .ant-upload-select-picture-card')).map(el=>({color:getComputedStyle(el).color,border:getComputedStyle(el).borderTopColor,hover:el.matches(':hover'),x:el.getBoundingClientRect().x}))})"));assert.equal(await run("getComputedStyle(document.querySelector('.feature-uploader .ant-upload-select-picture-card')).borderTopColor"),'rgb(232, 204, 105)')}
+      if(process.env.GRIDEA_SHORTCUT_SCREENSHOTS){fs.mkdirSync(process.env.GRIDEA_SHORTCUT_SCREENSHOTS,{recursive:true});fs.writeFileSync(path.join(process.env.GRIDEA_SHORTCUT_SCREENSHOTS,'upload-'+mode+'.png'),(await win.webContents.capturePage()).toPNG())}
+      console.log('PASS upload area colors, native illustration and hover',JSON.stringify(result));
+      await cssDebug.sendCommand('CSS.forcePseudoState',{nodeId:card.nodeId,forcedPseudoClasses:[]});
+    }
+    await run("(()=>{function find(vm){if(typeof vm.handlePostSettingClick==='function')return vm;return vm.$children.map(find).find(Boolean)}find(document.querySelector('#app').__vue__).postSettingsVisible=false;return true})()");
+  }
+  if(process.env.GRIDEA_TEST_UI_RESOURCES){
+    for(const mode of ['light','dark']){
+      const result=await run("("+${JSON.stringify(require('./fixtures/ui-resources-runtime.cjs').toString())}+")("+JSON.stringify(mode)+","+JSON.stringify(process.env.GRIDEA_UI_BASELINE==='1')+")");
+      if(process.env.GRIDEA_UI_SCREENSHOTS){
+        fs.mkdirSync(process.env.GRIDEA_UI_SCREENSHOTS,{recursive:true});
+        const shot=await win.webContents.capturePage(result.panel);
+        fs.writeFileSync(path.join(process.env.GRIDEA_UI_SCREENSHOTS,mode+'.png'),shot.toPNG());
+      }
+      console.log('PASS UI resources',JSON.stringify(result));
+    }
+    await run("Array.from(document.querySelectorAll('[aria-label]')).find(el=>el.getAttribute('aria-label')===document.querySelector('#app').__vue__.$t('insertEmoji')).click();true");
+  }
   await run("(()=>{function find(vm){if(typeof vm.previewPost==='function')return vm;for(const child of vm.$children){const found=find(child);if(found)return found}}const editor=find(document.querySelector('#app').__vue__);editor.form.content='**Bold** :smile:';editor.previewPost();return true})()");
   await wait(()=>run("Array.from(document.querySelectorAll('strong')).some(el=>el.textContent==='Bold' && el.parentElement.textContent.includes('😄'))"));
   assert.equal(await run("window.gridea.localURL('file:///tmp/A%20B.png?v=42')"),'app-media://file/image?path=%2Ftmp%2FA%20B.png&v=42');
   assert.equal(await run("window.gridea.filePath(new File(['test'], 'sample.png'))"),'');
   console.log('PASS packaged Markdown preview, local image URLs and Monaco editor');
+  if(process.env.GRIDEA_TEST_UI_RESOURCES && process.env.GRIDEA_UI_BASELINE!=='1') console.log(await run(${JSON.stringify('(' + require('./fixtures/ui-transition-runtime.cjs').toString() + ')()')}));
   assert.ok(!issues.some(issue=>/SharedArrayBuffer/i.test(JSON.stringify(issue))),JSON.stringify(issues));
   console.log('PASS no SharedArrayBuffer warnings with the sandbox enabled');
   const remote=await run("new Promise(r=>{window.gridea.receive('remote-detected',r,true);window.gridea.send('remote-detect')})");
   assert.equal(remote.success,false);
   assert.match(String(remote.message),/required/);
   console.log('PASS packaged deployment validation without network publishing');
+  if(process.env.GRIDEA_TEST_VUE2_BINDINGS) console.log(await run(${JSON.stringify('(' + require('./fixtures/vue2-bindings-runtime.cjs').toString() + ')()')}));
 
   console.log('MEMORY',JSON.stringify(app.getAppMetrics().map(m=>({type:m.type,workingSetKiB:m.memory.workingSetSize}))));
   clearTimeout(watchdog);app.quit();

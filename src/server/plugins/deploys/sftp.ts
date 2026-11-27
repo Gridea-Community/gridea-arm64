@@ -1,7 +1,7 @@
 import errorMessage from '../../../helpers/error-message'
 import * as fse from 'fs-extra'
-// import * as fs from 'fs'
 import path from 'path'
+import { randomUUID } from 'node:crypto'
 import SftpClient from 'ssh2-sftp-client'
 import { NodeSSH as NodeSsh } from 'node-ssh'
 import normalizePath from 'normalize-path'
@@ -53,7 +53,8 @@ export default class SftpDeploy extends Model {
       connectConfig.password = setting.password
     }
 
-    const testFilename = 'gridea.txt'
+    const testFilename = `gridea-test-${randomUUID()}.txt`
+    let localFileCreated = false
     const localTestFilePath = normalizePath(path.join(this.appDir, testFilename))
     const remoteTestFilePath = normalizePath(path.join(setting.remotePath, testFilename))
 
@@ -62,7 +63,8 @@ export default class SftpDeploy extends Model {
       await client.list('/')
 
       try {
-        fse.writeFileSync(localTestFilePath, 'This is gridea test file. you can delete it.')
+        fse.writeFileSync(localTestFilePath, 'Gridea connection test', { flag: 'wx' })
+        localFileCreated = true
 
         await client.put(localTestFilePath, remoteTestFilePath)
         await client.delete(remoteTestFilePath)
@@ -71,7 +73,7 @@ export default class SftpDeploy extends Model {
         result.success = false
         result.message = errorMessage(e)
       } finally {
-        if (fse.existsSync(localTestFilePath)) {
+        if (localFileCreated && fse.existsSync(localTestFilePath)) {
           fse.unlinkSync(localTestFilePath)
         }
       }
@@ -103,23 +105,29 @@ export default class SftpDeploy extends Model {
       username: setting.username,
     }
 
-    // node-ssh: privateKey is path string.
-    if (setting.privateKey) {
-      connectConfig.privateKey = fse.readFileSync(setting.privateKey)
-    } else {
-      connectConfig.password = setting.password
-    }
-
     const localPath = normalizePath(path.join(this.buildDir))
-    const remotePath = normalizePath(path.join(setting.remotePath))
+    const configuredPath = typeof setting.remotePath === 'string' ? setting.remotePath : ''
+    const remotePath = path.posix.normalize(normalizePath(configuredPath))
 
     try {
+      if (!configuredPath.trim() || ['/', '.', '..', '~'].includes(remotePath) || /[\0\r\n]/.test(remotePath)) {
+        throw new Error('SFTP remote path must identify a site directory, not a root or home directory')
+      }
+      if (setting.privateKey) {
+        connectConfig.privateKey = fse.readFileSync(setting.privateKey)
+      } else {
+        connectConfig.password = setting.password
+      }
       await client.connect(connectConfig)
       try {
-        await client.execCommand(`rm -rf ${remotePath}`)
+        // Let node-ssh quote arguments so spaces and shell metacharacters stay literal.
+        const cleanup = await client.exec('rm', ['-rf', '--', remotePath], { stream: 'both' })
+        if (cleanup.code !== 0) throw new Error(cleanup.stderr || 'Could not clear the remote site directory')
         await client.mkdir(remotePath)
+        let transferError = ''
         const res = await client.putDirectory(localPath, remotePath, {
           recursive: true,
+          tick: (_local, _remote, error) => { if (error && !transferError) transferError = errorMessage(error) },
           concurrency: 1, // 解决同步丢失js、css、图片文件问题
           validate: function (itemPath: string) {
             const baseName = path.basename(itemPath)
@@ -127,6 +135,7 @@ export default class SftpDeploy extends Model {
                    && baseName !== 'node_modules' // do not allow node_modules
           },
         })
+        if (!res) throw new Error(transferError || 'Some site files could not be uploaded')
       } catch (e) {
         console.error('SFTP Publish Error: ', errorMessage(e))
         result.success = false

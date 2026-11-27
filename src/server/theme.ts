@@ -1,6 +1,6 @@
 import * as path from 'path'
 import * as fse from 'fs-extra'
-import junk from 'junk'
+import { isNotJunk } from 'junk'
 import Model from './model'
 import { assertImageAccess, assertDestination } from '../helpers/file-access'
 import { atomicWrite } from '../helpers/atomic-file'
@@ -33,7 +33,7 @@ export default class Theme extends Model {
    */
   async getThemeList() {
     let themes = await fse.readdir(this.themeDir)
-    themes = themes.filter(junk.not)
+    themes = themes.filter(isNotJunk)
     const result = await Promise.all(themes.map(async (item: string) => {
       const data = {
         folder: item,

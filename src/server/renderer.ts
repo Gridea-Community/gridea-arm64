@@ -1,12 +1,13 @@
 import * as fs from 'fs'
-import urlJoin from 'url-join'
+import path from 'node:path'
+import urlJoin from '../helpers/url-join'
 import Bluebird from 'bluebird'
 import * as fse from 'fs-extra'
 import ejs from 'ejs'
 import moment from 'moment'
 import less from 'less'
 import { Feed } from 'feed'
-import junk from 'junk'
+import { isNotJunk } from 'junk'
 import { wordCount, timeCalc } from '../helpers/words-count'
 import Model from './model'
 import ContentHelper from '../helpers/content-helper'
@@ -45,9 +46,42 @@ export default class Renderer extends Model {
     this.utils.moment = moment
   }
 
+  private katexAssetsReady: Promise<void> | null = null
+
+  private async updateKatexStyles(html: string) {
+    // Older and already-installed themes reference a different KaTeX version.
+    // Use the renderer's own CSS/fonts without changing the user's theme files.
+    let changed = false
+    const stylesheet = urlJoin(this.db.themeConfig.domain, 'assets/gridea-katex/katex.min.css')
+      .replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!))
+    let updated = html.replace(/<link\b[^>]*>/gi, tag => {
+      const href = tag.match(/\shref\s*=\s*(["'])([^"']+)\1/i)
+      if (!href || !/^(?:https?:)?\/\/(?:cdnjs\.cloudflare\.com\/ajax\/libs\/KaTeX\/[^/]+\/|(?:cdn\.jsdelivr\.net\/npm\/|unpkg\.com\/)katex@[^/]+\/dist\/)katex(?:\.min)?\.css(?:[?#].*)?$/i.test(href[2])) return tag
+      changed = true
+      return tag.replace(href[2], stylesheet).replace(/\s+integrity\s*=\s*(["'])[^"']*\1/gi, '')
+    })
+    // Some themes only load math CSS on their homepage, although posts contain formulas.
+    if (!changed && /class=["'][^"']*\bkatex(?:[\s"'-])/.test(html) && /<\/head\s*>/i.test(html)) {
+      updated = html.replace(/<\/head\s*>/i, `<link rel="stylesheet" href="${stylesheet}">\n</head>`)
+      changed = true
+    }
+    if (!changed) return html
+    if (!this.katexAssetsReady) {
+      this.katexAssetsReady = (async () => {
+        const pluginDirectory = path.dirname(__non_webpack_require__.resolve('@iktakahiro/markdown-it-katex'))
+        const dist = path.dirname(__non_webpack_require__.resolve('katex', { paths: [pluginDirectory] }))
+        const destination = path.join(this.outputDir, 'assets/gridea-katex')
+        await fse.copy(path.join(dist, 'katex.min.css'), path.join(destination, 'katex.min.css'))
+        await fse.copy(path.join(dist, 'fonts'), path.join(destination, 'fonts'))
+      })()
+    }
+    await this.katexAssetsReady
+    return updated
+  }
+
   private async renderTemplate(file: string, data: Record<string, unknown>) {
     try {
-      return await ejs.renderFile(file, data)
+      return await this.updateKatexStyles(await ejs.renderFile(file, data))
     } catch (error) {
       const diagnostic = error as { path?: string, message?: string }
       const location = diagnostic.path || file
@@ -67,6 +101,7 @@ export default class Renderer extends Model {
   }
 
   async renderAll() {
+    this.katexAssetsReady = null
     await this.clearOutputFolder()
     await this.formatDataForRender()
     await this.buildCss()
@@ -403,7 +438,7 @@ export default class Renderer extends Model {
     const customTemplates = files
       .filter(item => !item.isDirectory())
       .map(item => item.name)
-      .filter(junk.not)
+      .filter(isNotJunk)
       .filter((name: string) => {
         return ![
           'index.ejs',

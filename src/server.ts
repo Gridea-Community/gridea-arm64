@@ -3,6 +3,12 @@ import { Server } from 'http'
 
 export default function initServer() {
   const app = express()
+  // Keep one stable middleware entry; site switches replace only its handler.
+  app.use((request, response, next) => {
+    const handler = app.locals.grideaPreviewStatic as express.RequestHandler | undefined
+    if (handler) return handler(request, response, next)
+    next()
+  })
   let server: Server | null = null
   let closed = false
 

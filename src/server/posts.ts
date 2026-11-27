@@ -5,7 +5,7 @@ import * as path from 'path'
 import matter from 'gray-matter'
 import moment from 'moment'
 import Bluebird from 'bluebird'
-import junk from 'junk'
+import { isNotJunk } from 'junk'
 import Model from './model'
 import { IPost, IPostDb } from './interfaces/post'
 import ContentHelper from '../helpers/content-helper'
@@ -35,7 +35,7 @@ export default class Posts extends Model {
     const requestList: any = []
     let files = await fse.readdir(this.postDir)
 
-    files = files.filter(item => junk.not(item) && item.endsWith('.md'))
+    files = files.filter(item => isNotJunk(item) && item.endsWith('.md'))
     files.forEach((item) => {
       requestList.push(fs.readFileSync(path.join(this.postDir, item), 'utf8'))
     })

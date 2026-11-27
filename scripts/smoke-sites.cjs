@@ -22,7 +22,7 @@ async function main() {
     if (!externalRoot) {
       theme.config.themeName = name
       setting.config.domain = 'https://example.invalid'
-      posts.posts = [{ fileName: 'release-smoke', content: '# Heading\n\nHello **Gridea** 😀', abstract: 'Hello Gridea', data: { title: 'Smoke test 中文 😀', date: '2026-01-01 12:00:00', tags: [], published: true, hideInList: false, isTop: false, feature: '' } }]
+      posts.posts = [{ fileName: 'release-smoke', content: '# Heading\n\nHello **Gridea** 😀\n\n$x^2$\n\n$$\n\\frac{a}{b}\n$$', abstract: 'Hello Gridea', data: { title: 'Smoke test 中文 😀', date: '2026-01-01 12:00:00', tags: [], published: true, hideInList: false, isTop: false, feature: '' } }]
     }
     // Test copies do not retain deployment secrets.
     for (const key of ['token', 'password', 'privateKey', 'netlifyAccessToken']) setting.config[key] = ''
@@ -37,6 +37,21 @@ async function main() {
     function walk(dir) { for (const entry of fs.readdirSync(dir, { withFileTypes: true })) { const file = path.join(dir, entry.name); if (entry.isDirectory()) walk(file); else if (file.endsWith('.html')) html.push(file) } }
     walk(instance.buildDir)
     if (!fs.existsSync(path.join(instance.buildDir, 'index.html')) || !html.length) throw new Error(`${name}: missing generated homepage`)
+    if (!externalRoot) {
+      const assert = require('node:assert/strict')
+      const cssFile = path.join(instance.buildDir, 'assets/gridea-katex/katex.min.css')
+      assert.equal(fs.readFileSync(cssFile, 'utf8'), fs.readFileSync(require.resolve('katex/dist/katex.min.css'), 'utf8'))
+      assert.ok(fs.readdirSync(path.join(instance.buildDir, 'assets/gridea-katex/fonts')).some(file => file.endsWith('.woff2')))
+      const rendered = html.map(file => fs.readFileSync(file, 'utf8')).join('\n')
+      assert.ok(rendered.includes('http://localhost:4000/assets/gridea-katex/katex.min.css'))
+      assert.ok(rendered.includes('class="katex"'))
+      for (const file of html) {
+        const content = fs.readFileSync(file, 'utf8')
+        if (content.includes('class="katex"')) assert.ok(content.includes('assets/gridea-katex/katex.min.css'), file)
+      }
+      assert.ok(!rendered.includes('/KaTeX/0.10.0/katex.min.css'))
+      assert.deepEqual(fs.readFileSync(path.join(blog, 'themes', name, 'config.json')), fs.readFileSync(path.join(source, 'themes', name, 'config.json')))
+    }
     results.push({ site: name, theme: theme.config.themeName, posts: posts.posts.length, html: html.length, status: 'passed' })
     // Invalid LESS must reject instead of leaving the render pending or throwing later.
     if (name === siteNames[siteNames.length - 1]) {
